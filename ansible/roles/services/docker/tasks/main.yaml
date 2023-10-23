@@ -1,0 +1,87 @@
+---
+- name: Perform a dist-upgrade
+  tags: always
+  ansible.builtin.apt:
+    upgrade: dist
+    update_cache: yes
+    force_apt_get: true
+  when: ansible_distribution == "Ubuntu"
+
+- name: Remove dependencies that are no longer required
+  ansible.builtin.apt:
+    autoremove: yes
+
+- name: Install a list of packages
+  ansible.builtin.apt:
+    name: "{{ package }}"
+    state: present
+    update_cache: yes
+  loop_control:
+    loop_var: package
+  loop:
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - software-properties-common
+  become: true
+  tags:
+    - docker
+
+- name: Add Docker official GPG key
+  become: true
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+  tags:
+    - docker
+
+- name: Verify that we have the key with the fingerprint
+  become: true
+  apt_key: 
+    id: 0EBFCD88
+    state: present
+  tags:
+    - docker
+
+- name: Set up the stable repository
+  become: true
+  apt_repository:
+    repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu jammy stable
+    state: present
+    update_cache: yes
+  tags:
+    - docker
+
+- name: Update apt packages
+  become: true
+  apt:
+    update_cache: yes
+  tags:
+    - docker
+
+- name: Install docker
+  become: true
+  apt:
+    name: docker-ce
+    state: present
+    update_cache: yes
+  tags:
+    - docker
+
+- name: Add user to "docker" group
+  become: true
+  user:
+    name: andre
+    group: "docker"
+    append: yes
+  tags:
+    - docker
+  
+- name: Install docker-compose
+  become: true
+  get_url: 
+    url : https://github.com/docker/compose/releases/download/v2.22.0/docker-compose-linux-x86_64
+    dest: /usr/local/bin/docker-compose
+    mode: 'u+x,g+x'
+  tags:
+    - docker

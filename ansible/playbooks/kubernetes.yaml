@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: true
+  roles:
+      - role: /home/andre/project/ansible/roles/common
+
+- hosts: kubernetes
+  become: true
+  roles:
+      - role: /home/andre/project/ansible/roles/kubernetes

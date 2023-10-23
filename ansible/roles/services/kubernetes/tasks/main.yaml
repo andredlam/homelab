@@ -1,0 +1,5 @@
+- name: Deploy kubernetes
+  include_tasks: '{{ item }}'
+  loop:
+    - create_user.yaml
+    - install_k8s.yaml

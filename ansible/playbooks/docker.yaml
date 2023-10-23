@@ -1,0 +1,5 @@
+---
+- hosts: vms
+  become: true
+  roles:
+      - role: /home/andre/project/ansible/roles/docker
