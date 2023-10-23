@@ -1,0 +1,97 @@
+- block:
+
+  - name: create a new folder for each VMs
+    ansible.builtin.file:
+      path: /var/lib/libvirt/images/{{ vm.name }}
+      state: directory
+      mode: 0775
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  - name: convert image to qcow2
+    ansible.builtin.shell: >
+      qemu-img convert -f qcow2 -O qcow2 \
+      /var/lib/libvirt/images/templates/ubuntu-22-server.qcow2 \
+      /var/lib/libvirt/images/{{ vm.name }}/root-disk.qcow2
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  - name: resize image to 5G
+    ansible.builtin.shell: >
+      qemu-img resize /var/lib/libvirt/images/{{ vm.name }}/root-disk.qcow2 +5G
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  - name: generate a netplan file for each VM
+    template: src=netplan.yaml.j2 dest="{{ role_path }}/files/{{ vm.name }}.yaml"
+    delegate_to: localhost
+    loop_control:
+      loop_var: vm
+    loop: '{{ virt.vms }}'
+
+  - name: Copy netplan.yaml to tmp
+    ansible.builtin.copy:
+      src: "files/{{ vm.name }}.yaml"
+      dest: "/tmp/{{ vm.name }}.yaml"
+      mode: 0644
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  - name: copy ssh public key to kvm
+    ansible.builtin.copy:
+      src: id_ed25519.pub
+      dest: /tmp/ansible.pub
+      mode: u=rw,g=r,o=rs
+
+  - name: Configure the image
+    command: |
+      virt-customize -a /var/lib/libvirt/images/{{ vm.name }}/root-disk.qcow2 \
+      --update \
+      --install qemu-guest-agent,molly-guard,openssh-server \
+      --hostname {{ vm.name }} \
+      --root-password password:{{ vm_root_pass }} \
+      --ssh-inject 'root:file:/tmp/ansible.pub' \
+      --copy-in "/tmp/{{ vm.name }}.yaml:/etc/netplan" \
+      --run-command 'useradd -m -p "" {{ vm.user }} ; chage -d 0 {{ vm.password }}' \
+      --firstboot-command "mv /etc/netplan/{{ vm.name }}.yaml /etc/netplan/50-cloud-init.yaml" \
+      --firstboot-command "netplan generate && netplan apply" \
+      --firstboot-command "dpkg-reconfigure openssh-server" \
+      --firstboot-command "sync" \
+      --uninstall cloud-init --selinux-relabel
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  - name: generate a local VM template for each VM
+    template: src=vm-template.xml.j2 dest="{{ role_path }}/templates/{{ vm.name }}.xml.j2"
+    delegate_to: localhost
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  - name: Define vm
+    community.libvirt.virt:
+      name: "{{ vm.name }}"
+      command: define
+      xml: "{{ lookup('template', '{{ vm.name }}.xml.j2') }}"
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  - name: Ensure VM is started
+    community.libvirt.virt:
+      name: "{{ vm.name }}"
+      state: running
+    register: vm_start_results
+    until: "vm_start_results is success"
+    retries: 15
+    delay: 2
+    loop_control:
+      loop_var: vm
+    loop: "{{ virt.vms }}"
+
+  become: true

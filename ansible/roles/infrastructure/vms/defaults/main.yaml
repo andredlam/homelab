@@ -1,0 +1,32 @@
+prometheus_blackbox:
+    exporters:
+        - vm: probe1
+          address: 10.0.0.80:9115
+          job_name: blackbox
+          metrics_path: /probe
+          modules:
+              - http_2xx
+          targets:
+              - name: F5
+                endpoint: 172.16.0.90
+              - name: BmDHCP
+                endpoint: 172.16.0.91
+              - name: InfraBastion
+                endpoint: 172.16.0.92
+        - vm: probe2
+          address: 10.0.0.81:9115
+          job_name: blackbox
+          metrics_path: /probe
+          modules:
+              - http_2xx
+          targets:
+              - name: RavenApi
+                endpoint: 172.16.0.93
+              - name: DNS
+                endpoint: 172.16.0.94
+              - name: MenMice
+                endpoint: 172.16.0.95
+              - name: MenMice
+                endpoint: 172.16.0.96
+              - name: NTP
+                endpoint: 172.16.0.97

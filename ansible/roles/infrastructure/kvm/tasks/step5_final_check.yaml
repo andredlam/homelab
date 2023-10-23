@@ -1,0 +1,10 @@
+- name: check all VMs up
+  command: "ping -c 4 {{ vm.mgmtIP }}"
+  delegate_to: "{{ hypervisor }}"
+  retries: 10
+  delay: 30
+  register: result
+  until: result.rc == 0
+  loop_control:
+    loop_var: vm
+  loop: "{{ virt.vms }}"

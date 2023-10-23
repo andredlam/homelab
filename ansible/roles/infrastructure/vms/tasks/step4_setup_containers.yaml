@@ -1,0 +1,67 @@
+- name: upload containers to probe VMs
+  become: true
+  ansible.builtin.copy:
+    src: "{{ container.name }}.tar"
+    dest: ~/
+    mode: '0755'
+  loop_control:
+    loop_var: container
+  loop: "{{ containers }}"
+
+- name: load containers
+  become: true
+  ansible.builtin.command: |
+    docker load --input ~/{{ container.name }}.tar
+  loop_control:
+    loop_var: container
+  loop: "{{ containers }}"
+
+- name: create a docker directory in probe VMs
+  ansible.builtin.file:
+    path: /docker
+    state: directory
+    mode: 0775
+
+- name: create docker sub-directory for each container in probe VMs
+  ansible.builtin.file:
+    path: "/docker/{{ container.name }}"
+    state: directory
+    mode: 0775
+  loop_control:
+    loop_var: container
+  loop: "{{ containers }}"
+
+- name: create config folder for each container
+  ansible.builtin.file:
+    path: "/docker/{{ container.name }}/config"
+    state: directory
+    mode: 0775
+  loop_control:
+    loop_var: container
+  loop: "{{ containers }}"
+
+- name: create blackbox exporter config from template
+  template: src=blackbox.yaml.j2 dest="/docker/blackbox/config/blackbox.yaml"
+  when: container.name == "blackbox"
+  loop_control:
+    loop_var: container
+  loop: "{{ containers }}"
+
+- name: create prometheus config from template
+  template: src=prometheus.yaml.j2 dest="/docker/prometheus/config/prometheus.yaml"
+  when: container.name == "prometheus"
+  loop_control:
+    loop_var: container
+  loop: "{{ containers }}"  
+
+- name: "start {{ container.name }}"
+  include_tasks: start_container.yaml
+  loop_control:
+    loop_var: container
+  loop: "{{ containers }}"
+
+- name: Check if blackbox_exporter is accessible
+  uri:
+    url: http://localhost:9115
+    method: GET
+    status_code: 200

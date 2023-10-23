@@ -1,0 +1,19 @@
+- name: shutdown VMs
+  become: true
+  community.libvirt.virt:
+    name: "{{ vm.name }}"
+    state: shutdown
+  delay: 2
+  loop_control:
+    loop_var: vm
+  loop: "{{ virt.vms }}"
+
+- name: remove VMs
+  become: true
+  community.libvirt.virt:
+    name: "{{ vm.name }}"
+    command: undefine
+  delay: 2
+  loop_control:
+    loop_var: vm
+  loop: "{{ virt.vms }}"

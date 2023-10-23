@@ -1,0 +1,51 @@
+# install necessary pkgs on all 3 VMs
+# install applications
+
+- name: upload docker containerd deb file to VM
+  become: true
+  ansible.builtin.copy:
+    src: containerd.io_1.6.22-1_amd64.deb
+    dest: ~/
+    mode: '0755'
+
+- name: upload docker docker-buildx deb file to VM
+  become: true
+  ansible.builtin.copy:
+    src: docker-buildx-plugin_0.11.2-1~ubuntu.22.04~jammy_amd64.deb
+    dest: ~/
+    mode: '0755'
+
+- name: upload docker docker-ce deb file to VM
+  become: true
+  ansible.builtin.copy:
+    src: docker-ce_24.0.6-1~ubuntu.22.04~jammy_amd64.deb
+    dest: ~/
+    mode: '0755'
+
+- name: upload dockerdocker-ce-cli deb file to VM
+  become: true
+  ansible.builtin.copy:
+    src: docker-ce-cli_24.0.6-1~ubuntu.22.04~jammy_amd64.deb
+    dest: ~/
+    mode: '0755'
+
+- name: upload docker docker-compose deb file to VM
+  become: true
+  ansible.builtin.copy:
+    src: docker-compose-plugin_2.21.0-1~ubuntu.22.04~jammy_amd64.deb
+    dest: ~/
+    mode: '0755'
+
+- name: install deb packages
+  become: true
+  ansible.builtin.shell: >
+    sudo dpkg -i ./containerd.io_1.6.22-1_amd64.deb \
+    ./docker-ce_24.0.6-1~ubuntu.22.04~jammy_amd64.deb \
+    ./docker-ce-cli_24.0.6-1~ubuntu.22.04~jammy_amd64.deb \
+    ./docker-buildx-plugin_0.11.2-1~ubuntu.22.04~jammy_amd64.deb \
+    ./docker-compose-plugin_2.21.0-1~ubuntu.22.04~jammy_amd64.deb
+
+- name: start docker
+  become: true
+  ansible.builtin.shell: sudo service docker start
+

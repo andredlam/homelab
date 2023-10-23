@@ -1,0 +1,22 @@
+# Make sure network interfaces are properly configure
+# Make sure passwordless is good
+
+- name: install packages
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Remove useless packages from the cache
+  become: true
+  ansible.builtin.apt:
+    autoclean: yes
+
+- name: Upgrade the OS (apt-get dist-upgrade)
+  become: true
+  ansible.builtin.apt:
+    upgrade: dist
+
+- name: Install needed package for docker
+  become: true
+  ansible.builtin.apt:
+    name: python3-docker

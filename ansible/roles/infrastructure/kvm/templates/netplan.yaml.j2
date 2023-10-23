@@ -1,0 +1,20 @@
+network:
+  ethernets:
+{% for interface in vm.interfaces %}
+    {{ interface.alias }}:
+{% if interface.ipv4addr is defined %}
+      dhcp4: false
+      addresses: [{{ interface.ipv4addr }}]
+{% else %}
+      dhcp4: true
+{% endif %}
+{% if interface.routes is defined %}
+      routes:
+{% for route in interface.routes %}
+        - to: {{ route.to }}
+          via: {{ route.via }}
+{% endfor %}
+{% endif %}
+      dhcp6: false
+
+{% endfor %}

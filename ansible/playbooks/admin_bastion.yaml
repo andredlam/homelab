@@ -1,6 +1,0 @@
----
-- hosts: admin_bastion
-  gather_facts: true
-
-  roles:
-      - role: /home/andre/project/bastion/roles/infrastructure/admin_bastion

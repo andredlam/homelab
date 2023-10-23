@@ -1,0 +1,8 @@
+- name: Check VMS
+  ansible.builtin.include_tasks: '{{ item }}'
+  loop:
+    - step1_resize_vms.yaml
+    - step2_check_vms.yaml
+    - step3_setup_docker.yaml
+    - step4_setup_containers.yaml
+    - step5_final_check.yaml

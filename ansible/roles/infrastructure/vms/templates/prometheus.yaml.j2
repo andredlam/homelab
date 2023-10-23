@@ -1,0 +1,28 @@
+global:
+  scrape_interval: 15s
+  external_labels:
+    monitor: 'Probe Network'
+
+scrape_configs:
+{% for exporter in prometheus_blackbox.exporters %}
+  - job_name: {{ exporter.job_name }}
+    metrics_path: {{ exporter.metrics_path }}
+    params:
+      module: 
+{% for module in exporter.modules %}
+        - {{ module }}
+{% endfor %}
+      static_configs:
+        - targets:
+{% for target in exporter.targets %}
+          - {{ target.endpoint }}
+{% endfor %}
+
+      relabel_configs:
+        - source_labels: [__address__]
+          target_label: __param_target
+        - source_labels: [__param_target]
+          target_label: instance
+        - target_label: __address__
+          replacement: {{ exporter.address }}
+{% endfor %}

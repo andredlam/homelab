@@ -1,0 +1,4 @@
+- name: Remove VMs
+  ansible.builtin.include_tasks: '{{ item }}'
+  loop:
+    - remove_vms.yaml

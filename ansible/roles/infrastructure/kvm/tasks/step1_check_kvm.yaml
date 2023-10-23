@@ -1,0 +1,53 @@
+- name: check CPU vt support
+  ansible.builtin.shell: egrep -c '(vmx|svm)' /proc/cpuinfo
+  register: result
+  changed_when: false
+
+- name: verify CPU vt output
+  assert: {that: result.stdout | int > 0, msg: "Please enable CPU vt support in BIOS"}
+
+- name: install packages
+  become: true
+  apt:
+    name: qemu-kvm,libvirt-daemon-system, libvirt-clients, bridge-utils, virt-manager, python3-lxml, python3-libvirt, genisoimage, guestfs-tools
+    state: present
+    update_cache: true
+
+- name: enable virtualization daemon
+  become: true
+  ansible.builtin.shell: |
+    systemctl enable --now libvirtd
+    systemctl start libvirtd
+
+- name: create an image directory
+  become: true
+  ansible.builtin.file:
+    path: /var/lib/libvirt/images/templates
+    state: directory
+    owner: "{{ kvm_user }}"
+    group: "{{ kvm_user }}"
+    mode: '0744'
+
+- name: check if image file exists
+  ansible.builtin.stat:
+    path: /var/lib/libvirt/images/templates/ubuntu-22-server.qcow2
+  register: file_stat
+
+- name: upload an image into the directory
+  become: true
+  ansible.builtin.copy:
+    src: jammy-server-cloudimg-amd64.img
+    dest: /var/lib/libvirt/images/templates
+    owner: "{{ kvm_user }}"
+    group: "{{ kvm_user }}"
+    mode: '0744'
+  when: not file_stat.stat.exists
+
+- shell: find /var/lib/libvirt/images/templates -mindepth 1 -type f | grep amd64.img
+  register: pathfile
+  when: not file_stat.stat.exists
+
+- name: rename image to be qcow2
+  become: true
+  ansible.builtin.command: mv {{ pathfile.stdout }} /var/lib/libvirt/images/templates/ubuntu-22-server.qcow2
+  when: not file_stat.stat.exists

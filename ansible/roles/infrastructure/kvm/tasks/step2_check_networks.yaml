@@ -1,0 +1,41 @@
+- name: get all bridges
+  ansible.builtin.shell: brctl show | tail -n +2 | grep "^br"
+  register: output
+
+- set_fact:
+    bridges: "{{ bridges|default([]) + line | regex_search(regexp,'\\1') }}"
+  vars:
+    regexp: '([\w\.\-]+)\s'
+  loop_control:
+    loop_var: line
+  with_items:
+     - "{{ output.stdout_lines }}"
+
+- debug:
+    var: bridges
+
+- set_fact:
+    expects: "{{ expects|default([]) + [net.name] }}"
+  loop_control:
+    loop_var: net
+  with_items: "{{ virt.networks }}"
+
+- debug:
+    var: expects
+
+- set_fact:
+    missing: "{{ expects | difference(bridges) }}"
+
+- name: check for all required interfaces are available
+  ansible.builtin.fail: 
+    msg: "These interfaces are missing: {{ missing }}"
+  when: missing | length != 0
+
+- name: check each of VMs to make sure they have the right network interface(s)
+  ansible.builtin.fail:
+    msg: "Interface {{ vm.1.source }} of {{ vm.0.name }} not found"
+  when: vm.1.source not in bridges
+  loop_control:
+    loop_var: vm
+  loop:
+    "{{ virt.vms | subelements('interfaces', 'skip_missing=True') }}"

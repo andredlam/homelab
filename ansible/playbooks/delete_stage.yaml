@@ -1,0 +1,6 @@
+---
+- hosts: kvm
+  gather_facts: true
+
+  roles:
+    - role: "{{ playbook_dir }}/../roles/stage/cleanup"

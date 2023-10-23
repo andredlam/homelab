@@ -1,0 +1,38 @@
+- name: list all VMs
+  community.libvirt.virt:
+    command: list_vms
+  register: result
+  changed_when: no
+  tags: system_check
+
+- name: print all VMs
+  debug: var=result.list_vms
+
+- name: make sure primary/worker VMs are not running
+  fail: msg="unexpected VMs running"
+  when: vm.name in result.list_vms
+  loop_control:
+    loop_var: vm
+  loop: "{{ virt.vms }}"
+
+- name: check system memory
+  community.libvirt.virt:
+    command: freemem
+  register: memory
+  tags: system_check
+
+- name: print memory
+  vars:
+    mfree: "{{ (memory.freemem / 1024 / 1024 / 1024) | round | int }}"
+  debug:
+    msg: "{{ mfree }}"
+  register: mfree
+  tags: system_check
+
+- name: debug
+  debug: var=mfree
+
+- name: Make sure KVM has enough memory
+  fail: msg="KVM doesn't have enough memory"
+  when: mfree.msg | int < 8
+  tags: system_check

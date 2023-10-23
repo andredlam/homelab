@@ -1,17 +1,17 @@
-# Project Home Labs
+# Home Lab
 
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
 
-- [Project Home Labs](#project-home-labs)
+- [Home Lab](#home-lab)
   - [Goals](#goals)
         - [Everything will be deployed with ansible](#everything-will-be-deployed-with-ansible)
   - [Prerequisites](#prerequisites)
     - [System Requirements](#system-requirements)
   - [Installation](#installation)
-      - [s Setup ansible](#s-setup-ansible)
+      - [Setup ansible](#setup-ansible)
 
 <!-- /code_chunk_output -->
 

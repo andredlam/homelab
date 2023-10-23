@@ -1,0 +1,27 @@
+- name: "starting {{ container.name }}"
+  become: true
+  community.general.docker_container:
+    name: "{{ container.name }}"
+    state: started
+    restart_policy: always
+    image: "{{ container.image }}"
+    pull: false
+    published_ports:
+      - "{{ container.ports.0 }}"
+  when: container.config is not defined or container.volumes is not defined
+
+- name: "starting {{ container.name }}"
+  become: true
+  community.general.docker_container:
+    name: "{{ container.name }}"
+    state: started
+    restart_policy: always
+    image: "{{ container.image }}"
+    volumes:
+      - "{{ container.volumes.0 }}"
+    command: >
+      "--config.file={{ container.config }}"
+    pull: false
+    published_ports:
+      - "{{ container.ports.0 }}"
+  when: container.config is defined and container.volumes is defined
