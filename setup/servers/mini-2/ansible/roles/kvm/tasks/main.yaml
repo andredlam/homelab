@@ -1,0 +1,11 @@
+- name: Check KVM nd deploy VMs
+  ansible.builtin.include_tasks: '{{ item }}'
+  loop:
+    - step1_check_kvm.yaml
+    - step2_check_networks.yaml
+    - step3_check_resources.yaml
+    - step4_create_vms.yaml
+    - step5_final_check.yaml
+  when: ansible_virtualization_type == 'kvm' and ansible_virtualization_role == 'host'
+  tags: kvm
+

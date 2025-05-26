@@ -18,9 +18,9 @@
       loop_var: vm
     loop: "{{ virt.vms }}"
 
-  - name: resize image to 5G
+  - name: resize image to 25G
     ansible.builtin.shell: >
-      qemu-img resize /var/lib/libvirt/images/{{ vm.name }}/root-disk.qcow2 +5G
+      qemu-img resize /var/lib/libvirt/images/{{ vm.name }}/root-disk.qcow2 +25G
     loop_control:
       loop_var: vm
     loop: "{{ virt.vms }}"
@@ -56,7 +56,8 @@
       --root-password password:{{ vm_root_pass }} \
       --ssh-inject 'root:file:/tmp/ansible.pub' \
       --copy-in "/tmp/{{ vm.name }}.yaml:/etc/netplan" \
-      --run-command 'useradd -m -p "" {{ vm.user }} ; chage -d 0 {{ vm.password }}' \
+      --run-command 'useradd -m -s /bin/bash {{ vm.user }}' \
+      --password {{ vm.user }}:password:{{ vm.password }} \
       --firstboot-command "mv /etc/netplan/{{ vm.name }}.yaml /etc/netplan/50-cloud-init.yaml" \
       --firstboot-command "netplan generate && netplan apply" \
       --firstboot-command "dpkg-reconfigure openssh-server" \

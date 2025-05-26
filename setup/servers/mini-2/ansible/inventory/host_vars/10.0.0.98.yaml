@@ -1,0 +1,78 @@
+kvm: 10.0.0.98
+virt:
+  networks:
+    - name: br-vlan.100
+      vlan: 100
+      link: eno2
+      dhcp4: false
+      for: Public network
+    - name: br-vlan.10
+      vlan: 10
+      link: eno2
+      dhcp4: false
+      for: Internal network
+    - name: br-vlan.20
+      vlan: 20
+      link: eno2
+      dhcp4: false
+      for: Secure network
+    - name: br-vlan.30
+      vlan: 30
+      link: eno2
+      dhcp4: false
+      for: Tenant network
+    - name: br-vlan.40
+      vlan: 40
+      link: eno2
+      dhcp4: false
+      for: Provider Infra network
+
+  vms:
+    - name: vm-120
+      mgmtIP: 10.0.0.120
+      user: guest
+      password: guest123!
+      interfaces:
+        - type: bridge
+          source: br0
+          alias: enp1s0
+          ipv4addr: 10.0.0.120/24
+          routes:
+            - to: default
+              via: 10.0.0.1
+        - type: bridge
+          source: br-vlan.100
+          alias: enp2s0
+          ipv4addr: 172.16.0.120/24
+    - name: vm-121
+      mgmtIP: 10.0.0.121
+      user: guest
+      password: guest123!
+      interfaces:
+        - type: bridge
+          source: br0
+          alias: enp1s0
+          ipv4addr: 10.0.0.121/24
+          routes:
+            - to: default
+              via: 10.0.0.1
+        - type: bridge
+          source: br-vlan.100
+          alias: enp2s0
+          ipv4addr: 172.16.0.121/24
+    - name: vm-122
+      mgmtIP: 10.0.0.122
+      user: guest
+      password: guest123!
+      interfaces:
+        - type: bridge
+          source: br0
+          alias: enp1s0
+          ipv4addr: 10.0.0.122/24
+          routes:
+            - to: default
+              via: 10.0.0.1
+        - type: bridge
+          source: br-vlan.100
+          alias: enp2s0
+          ipv4addr: 172.16.0.122/24

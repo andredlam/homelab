@@ -1,5 +1,6 @@
 # Home Lab
 
+Goal: Build a home datacenter with AI capable for learning and experiment
 
 <!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
@@ -12,6 +13,10 @@
     - [System Requirements](#system-requirements)
   - [Installation](#installation)
       - [Setup ansible](#setup-ansible)
+        - [Generate ssh key](#generate-ssh-key)
+        - [Directory Layout for referrence for ansible](#directory-layout-for-referrence-for-ansible)
+      - [Setup k3s](#setup-k3s)
+        - [Requirements](#requirements)
 
 <!-- /code_chunk_output -->
 

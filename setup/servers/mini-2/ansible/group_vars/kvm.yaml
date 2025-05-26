@@ -1,0 +1,3 @@
+# Not sure why define variables here are not working
+# but they are working in the playbook.
+ansible_user: ansible

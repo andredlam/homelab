@@ -21,11 +21,12 @@
 
 - name: create an image directory
   become: true
+  become_user: "{{ ansible_user }}"
   ansible.builtin.file:
     path: /var/lib/libvirt/images/templates
     state: directory
-    owner: "{{ kvm_user }}"
-    group: "{{ kvm_user }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0744'
 
 - name: check if image file exists
@@ -35,11 +36,12 @@
 
 - name: upload an image into the directory
   become: true
+  become_user: "{{ ansible_user }}"
   ansible.builtin.copy:
     src: jammy-server-cloudimg-amd64.img
     dest: /var/lib/libvirt/images/templates
-    owner: "{{ kvm_user }}"
-    group: "{{ kvm_user }}"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
     mode: '0744'
   when: not file_stat.stat.exists
 

@@ -1,0 +1,8 @@
+---
+- hosts: kvm
+  gather_facts: true
+  vars:
+    ansible_user: ansible
+
+  roles:
+    - role: "{{ playbook_dir }}/../roles/kvm"
