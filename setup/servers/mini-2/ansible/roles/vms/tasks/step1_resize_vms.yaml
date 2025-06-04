@@ -11,7 +11,7 @@
   become: true
   ansible.builtin.reboot:
 
-- name: convert image to qcow2
+- name: resize filesystem
   become: true
   ansible.builtin.shell: resize2fs /dev/vda1
 

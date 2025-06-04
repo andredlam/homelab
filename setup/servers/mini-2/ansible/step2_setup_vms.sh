@@ -1,0 +1,1 @@
+ansible-playbook --ask-become-pass -i ./inventory/hosts ./playbooks/setup_vms.yaml

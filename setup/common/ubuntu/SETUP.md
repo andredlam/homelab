@@ -29,4 +29,7 @@ $ netplan apply
 $ vi /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
 network: {config: disabled}
 
+# Also try
+sudo touch /etc/cloud/cloud-init.disabled
+
 ```

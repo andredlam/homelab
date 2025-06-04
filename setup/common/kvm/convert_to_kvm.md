@@ -27,6 +27,7 @@
       KVM acceleration can be used
 
     # Install KVM on Ubuntu 22.04
+    $ apt install openvswitch-switch-dpdk -y
     $ apt install -y qemu-kvm virt-manager libvirt-daemon-system virtinst libvirt-clients bridge-utils
 
     # Enable virtualization daemon
@@ -41,9 +42,10 @@
     $ sudo usermod -aG libvirt $USER
 
     # Add ansible user
-    $ sudo useradd ansible
+    $ sudo adduser ansible
     # Allow ansible to do sudo
     $ sudo usermod -aG sudo ansible
+    $ passwd ansible # Set password for ansible user
 
     # disable netfilter for performance and security reasons
     $ vi /etc/sysctl.d/bridge.conf

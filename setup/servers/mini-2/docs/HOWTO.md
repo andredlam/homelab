@@ -11,7 +11,7 @@
     $ ssh-keygen -t ed25519 -C ansible   (or with -f .ssh/ansible)
 
     # copy key to target server(s)
-    $ ssh-copy-id -i id_ed25519.pub <kvm>@<ip-address>
+    $ ssh-copy-id -i id_ed25519.pub <user>@<kvm-ip-address>
 
     # install ansible
     $ apt install ansible
@@ -88,3 +88,17 @@ VLAN-100: Public network (e.g. AWS, Vault)
 # Note: need to create Bridges for VLANs in KVM so VMs can use
 ```
 
+
+network:
+  ethernets:
+    ens160:
+      dhcp4: false
+      dhcp6: false
+      addresses: [ 10.0.0.71/24]
+      routes:
+        - to: default
+          via: 10.0.0.1
+      nameservers:
+        addresses: [8.8.8.8, 8.8.4.4, 75.75.75.75]
+        search: []
+  version: 2

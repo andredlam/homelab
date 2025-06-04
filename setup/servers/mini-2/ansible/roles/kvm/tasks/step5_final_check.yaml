@@ -1,6 +1,6 @@
 - name: check all VMs up
   command: "ping -c 4 {{ vm.mgmtIP }}"
-  delegate_to: "{{ hypervisor }}"
+  delegate_to: "{{ kvm }}"
   retries: 10
   delay: 30
   register: result

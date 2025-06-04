@@ -60,6 +60,8 @@
       --password {{ vm.user }}:password:{{ vm.password }} \
       --firstboot-command "mv /etc/netplan/{{ vm.name }}.yaml /etc/netplan/50-cloud-init.yaml" \
       --firstboot-command "netplan generate && netplan apply" \
+      --run-command "sed -i 's/^PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config" \
+      --run-command "systemctl restart sshd" \
       --firstboot-command "dpkg-reconfigure openssh-server" \
       --firstboot-command "sync" \
       --uninstall cloud-init --selinux-relabel
