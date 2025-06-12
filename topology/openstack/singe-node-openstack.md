@@ -45,7 +45,7 @@ ADMIN_PASSWORD=secret
 DATABASE_PASSWORD=\$ADMIN_PASSWORD
 RABBIT_PASSWORD=\$ADMIN_PASSWORD
 SERVICE_PASSWORD=\$ADMIN_PASSWORD
-HOST_IP=<your_host_ip>  # Change this to your host IP e.g. 192.168.1.23
+HOST_IP=<your nic2 ipaddr>  # e.g. 192.168.1.23
 
 # External network
 PUBLIC_INTERFACE=eno2
@@ -98,7 +98,7 @@ default via 10.0.0.1 dev eno1 proto static
 192.168.122.0/24 dev virbr0 proto kernel scope link src 192.168.122.1 linkdown
 ```
 
-### Download Cloud image
+### Download Cloud image to use for OpenStack VM
 ```shell
 # Download the latest Ubuntu cloud image
 $ wget https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img
@@ -113,10 +113,19 @@ $ sha256sum -c SHA256SUMS 2>&1 | grep OK
 ```
 
 ### Create OpenStack VM
-```shell
-    # MUST create Security Group "ICMP" and "TCP" and assign to the VM
-    # in order to allow ping and ssh access
+-  MUST create Security Group "ICMP" and "TCP" and assign to the VM in order to allow ping and ssh access
 
-    $ ssh -i ansible ubuntu@192.168.1.206
+
+#### MUST ADD NAT RULES TO OPENSTACK HOST SO VM CAN ACCESS INTERNET
+```shell
+# assume 192.168.10.0/24 is the network for OpenStack VMs
+$ iptables -t nat -A POSTROUTING -s 192.168.10.0/24 -j MASQUERADE
+$ iptables -t nat -A PREROUTING -d 80 --to-destination 192.168.10.25 -j DNAT
+
+
+# How linux does NAT
+iptables -t nat -A PREROUTING -j DNAT --dport 8080 --to-destination 80
+# How docker does NAT
+iptables -t nat -A DOCKER -j DNAT --dport 8080 --to-destination 172.17.0.3:80
 
 ```
