@@ -6,8 +6,8 @@
 - at least 100GB disk space
 - Ubuntu 24.04 or later
 - KVM host with 2 interfaces
-    - eno1 (management)
-    - eno2 (data plane)
+    - eno1 (management) (172.28.1.0/24)
+    - eno2 (data plane) (20.0.0.0/24)
 
 
 ## Installation
@@ -45,13 +45,13 @@ ADMIN_PASSWORD=secret
 DATABASE_PASSWORD=\$ADMIN_PASSWORD
 RABBIT_PASSWORD=\$ADMIN_PASSWORD
 SERVICE_PASSWORD=\$ADMIN_PASSWORD
-HOST_IP=<your nic2 ipaddr>  # e.g. 192.168.1.23
+HOST_IP=20.0.0.22
 
 # External network
 PUBLIC_INTERFACE=eno2
-FLOATING_RANGE=192.168.1.0/24
-PUBLIC_NETWORK_GATEWAY="192.168.1.1"
-Q_FLOATING_ALLOCATION_POOL=start=192.168.1.200,end=192.168.1.254
+FLOATING_RANGE=20.0.0.0/24
+PUBLIC_NETWORK_GATEWAY="20.0.0.1"
+Q_FLOATING_ALLOCATION_POOL=start=20.0.0.200,end=20.0.0.254
 
 # Enable services
 ENABLED_SERVICES+=,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-cauth,placement-api,placement-client
@@ -59,16 +59,16 @@ ENABLED_SERVICES+=,key,n-api,n-crt,n-obj,n-cpu,n-cond,n-sch,n-cauth,placement-ap
 GIT_BASE=https://opendev.org
 
 enable_service rabbit
-enable_plugin neutron $GIT_BASE/openstack/neutron
+enable_plugin neutron \$GIT_BASE/openstack/neutron
 
 # Octavia supports using QoS policies on the VIP port:
 enable_service q-qos
 enable_service placement-api placement-client
 # Octavia services
-enable_plugin octavia $GIT_BASE/openstack/octavia master
-enable_plugin octavia-dashboard $GIT_BASE/openstack/octavia-dashboard
-enable_plugin ovn-octavia-provider $GIT_BASE/openstack/ovn-octavia-provider
-enable_plugin octavia-tempest-plugin $GIT_BASE/openstack/octavia-tempest-plugin
+enable_plugin octavia \$GIT_BASE/openstack/octavia master
+enable_plugin octavia-dashboard \$GIT_BASE/openstack/octavia-dashboard
+enable_plugin ovn-octavia-provider \$GIT_BASE/openstack/ovn-octavia-provider
+enable_plugin octavia-tempest-plugin \$GIT_BASE/openstack/octavia-tempest-plugin
 enable_service octavia o-api o-cw o-hm o-hk o-da
 
 
@@ -128,4 +128,13 @@ iptables -t nat -A PREROUTING -j DNAT --dport 8080 --to-destination 80
 # How docker does NAT
 iptables -t nat -A DOCKER -j DNAT --dport 8080 --to-destination 172.17.0.3:80
 
+```
+
+
+
+### Fix issues
+
+#### Fix loading instance issue after reboot
+```shell
+$ sudo systemctl restart devstack@*
 ```

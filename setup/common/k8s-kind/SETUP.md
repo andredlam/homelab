@@ -26,10 +26,6 @@ EOF
 chmod +x install_docker.sh
 bash install_docker.sh
 
-# Add user to docker group
-sudo usermod -aG docker $USER
-# Restart the system to apply changes
-sudo systemctl restart docker
 
 # exit and login again to apply group changes 
 ```
@@ -90,6 +86,43 @@ kubectl get nodes
 ```
 
 
+### Cleanup KinD Cluster
+```shell
+# List existing clusters
+kind get clusters
 
+# Delete specific cluster
+kind delete cluster --name kind-cluster
 
+# Or delete all clusters
+kind delete clusters --all
 
+# Verify clusters are deleted
+kind get clusters
+```
+
+### Create Multi-Node KinD Cluster
+```shell
+# Create kind-config.yaml with multiple workers
+cat <<'EOF' >> kind-config.yaml
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kind-cluster
+networking:
+  apiServerAddress: "127.0.0.1"
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker
+  - role: worker
+EOF
+
+# Create cluster
+kind create cluster --config kind-config.yaml
+
+# Verify nodes
+kubectl get nodes
+
+# Check node details
+kubectl describe nodes
+```
