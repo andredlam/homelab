@@ -1,0 +1,47 @@
+FROM ubuntu:20.04
+
+# Prevent interactive prompts during package installation
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install basic packages
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    build-essential \
+    python3 \
+    python3-pip \
+    iproute2 \
+    iptables \
+    iputils-ping \
+    tcpdump \
+    iperf3 \
+    net-tools \
+    dnsutils \
+    vim \
+    less \
+    systemctl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install OVS and OVN
+RUN apt-get update && apt-get install -y \
+    openvswitch-switch \
+    openvswitch-common \
+    ovn-host \
+    ovn-common \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create necessary directories
+RUN mkdir -p /var/run/ovn \
+    /var/log/ovn \
+    /etc/ovn \
+    /usr/local/bin \
+    /labs \
+    /docs
+
+# Copy startup script
+COPY scripts/start-ovn-node.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/start-ovn-node.sh
+
+# Default command
+CMD ["/usr/local/bin/start-ovn-node.sh"]

@@ -1,0 +1,102 @@
+version: '3.8'
+
+services:
+  ovn-central:
+    build:
+      context: .
+      dockerfile: Dockerfile.ovn-central
+    container_name: ovn-central
+    hostname: ovn-central
+    privileged: true
+    networks:
+      ovn-network:
+        ipv4_address: 172.20.0.10
+    ports:
+      - "6641:6641"  # OVN Northbound DB
+      - "6642:6642"  # OVN Southbound DB
+    volumes:
+      - ovn-central-data:/var/lib/ovn
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    environment:
+      - OVN_CENTRAL=yes
+    command: ["/usr/local/bin/start-ovn-central.sh"]
+
+  ovn-learning:
+    build:
+      context: .
+      dockerfile: Dockerfile.ovn-node
+    container_name: ovn-learning
+    hostname: ovn-learning
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    networks:
+      ovn-network:
+        ipv4_address: 172.20.0.11
+    volumes:
+      - ./labs:/labs
+      - ./docs:/docs
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    environment:
+      - OVN_CENTRAL_IP=172.20.0.10
+      - OVN_ENCAP_IP=172.20.0.11
+    depends_on:
+      - ovn-central
+    command: ["/usr/local/bin/start-ovn-node.sh"]
+    stdin_open: true
+    tty: true
+
+  ovn-node1:
+    build:
+      context: .
+      dockerfile: Dockerfile.ovn-node
+    container_name: ovn-node1
+    hostname: ovn-node1
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    networks:
+      ovn-network:
+        ipv4_address: 172.20.0.12
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    environment:
+      - OVN_CENTRAL_IP=172.20.0.10
+      - OVN_ENCAP_IP=172.20.0.12
+    depends_on:
+      - ovn-central
+    command: ["/usr/local/bin/start-ovn-node.sh"]
+
+  ovn-node2:
+    build:
+      context: .
+      dockerfile: Dockerfile.ovn-node
+    container_name: ovn-node2
+    hostname: ovn-node2
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    networks:
+      ovn-network:
+        ipv4_address: 172.20.0.13
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+    environment:
+      - OVN_CENTRAL_IP=172.20.0.10
+      - OVN_ENCAP_IP=172.20.0.13
+    depends_on:
+      - ovn-central
+    command: ["/usr/local/bin/start-ovn-node.sh"]
+
+networks:
+  ovn-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+
+volumes:
+  ovn-central-data:
