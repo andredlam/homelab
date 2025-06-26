@@ -16,6 +16,8 @@ This guide provides comprehensive strategies and best practices for deploying an
 10. [Deployment Strategies](#deployment-strategies)
 11. [Troubleshooting at Scale](#troubleshooting-at-scale)
 12. [Best Practices](#best-practices)
+13. [Additional Materials](#additional-materials)
+
 
 ## Architecture Overview
 
@@ -203,19 +205,19 @@ This guide provides comprehensive strategies and best practices for deploying an
 │  │  │ Leaf 1 │      │ Leaf 2   │      │ Leaf 3   │    │ Leaf N   │         │                    │
 │  │  │(ToR SW)│      │ (ToR SW) │      │ (ToR SW) │    │ (ToR SW) │         │                    │
 │  │  └────┬───┘      └────┬─────┘      └────┬─────┘    └────┬─────┘         │                    │
-│  └───────┼───────────────┼─────────────────┼─────────────┼─────────────────┘                    │
-│          │               │                 │             │                                      │
-│          │               │                 │             │                                      │
-│  ┌───────▼───────┐ ┌─────▼─────┐ ┌─────────▼───┐ ┌───────▼─────┐                                │
-│  │ Compute Rack 1│ │Compute    │ │Gateway      │ │Control      │                                │
-│  │               │ │Rack 2     │ │Chassis Rack │ │Plane Rack   │                                │
-│  │ ┌───────────┐ │ │           │ │             │ │             │                                │
-│  │ │10.1.1.0/24│ │ │10.1.2.0/24│ │10.1.99.0/24 │ │10.1.100.0/24│                                │
-│  │ │           │ │ │           │ │             │ │             │                                │
-│  │ │Node1 Node2│ │ │Node51     │ │GW1 GW2 GW3  │ │NB-DB SB-DB  │                                │
-│  │ │... Node50 │ │ │...Node100 │ │GW4 GW5 GW6  │ │ovn-northd   │                                │
-│  │ └───────────┘ │ │           │ │             │ │             │                                │
-│  └───────────────┘ └───────────┘ └─────────────┘ └─────────────┘                                │
+│  └───────┼───────────────┼─────────────────┼───────────────┼───────────────┘                    │
+│          │               │                 │               │                                    │
+│          │               │                 │               │                                    │
+│  ┌───────▼───────┐ ┌─────▼─────┐ ┌─────────▼───┐   ┌───────▼─────┐                              │
+│  │ Compute Rack 1│ │Compute    │ │Gateway      │   │Control      │                              │
+│  │               │ │Rack 2     │ │Chassis Rack │   │Plane Rack   │                              │
+│  │ ┌───────────┐ │ │           │ │             │   │             │                              │
+│  │ │10.1.1.0/24│ │ │10.1.2.0/24│ │10.1.99.0/24 │   │10.1.100.0/24│                              │
+│  │ │           │ │ │           │ │             │   │             │                              │
+│  │ │Node1 Node2│ │ │Node51     │ │GW1 GW2 GW3  │   │NB-DB SB-DB  │                              │
+│  │ │... Node50 │ │ │...Node100 │ │GW4 GW5 GW6  │   │ovn-northd   │                              │
+│  │ └───────────┘ │ │           │ │             │   │             │                              │
+│  └───────────────┘ └───────────┘ └─────────────┘   └─────────────┘                              │
 └─────────────────────────────────────────────────────────────────────────────────────────────────┘
 
                               GENEVE/VXLAN TUNNELS
@@ -225,7 +227,7 @@ This guide provides comprehensive strategies and best practices for deploying an
 │                            TUNNEL MESH TOPOLOGY                                                 │
 │                                                                                                 │
 │  Compute Node 1        Compute Node 2        Gateway Node 1      Gateway Node 2                 │
-│  10.1.1.10             10.1.2.20            10.1.99.10         10.1.99.11                       │
+│  10.1.1.10             10.1.2.20             10.1.99.10          10.1.99.11                     │
 │  ┌─────────────┐       ┌─────────────┐       ┌─────────────┐    ┌─────────────┐                 │
 │  │br-int│br-tun│       │br-int│br-tun│       │br-int│br-ex │    │br-int│br-ex │                 │
 │  │      │      │       │      │      │       │      │      │    │      │      │                 │
@@ -2215,3 +2217,15 @@ done
 - [ ] Monitor and tune regularly
 
 This comprehensive guide provides the foundation for successfully deploying and scaling OVN/OVS in large enterprise environments. Regular monitoring, proactive capacity planning, and adherence to best practices are essential for maintaining performance and reliability at scale.
+
+
+### Additional Materials
+- [Running OVN Southbound DB with OVSDB Relay](https://docs.ovn.org/en/latest/tutorials/ovn-ovsdb-relay.html)
+- [OVN Cluster Interconnection](https://dani.foroselectronica.es/ovn-cluster-interconnection-567/)
+- [Scaling OVSDB Access with Relay](https://docs.openvswitch.org/en/latest/topics/ovsdb-relay/)
+- [Multi-tenant Inter-DC tunneling with OVN](https://www.openvswitch.org/support/ovscon2019/day1/1501-Multi-tenant%20Inter-DC%20tunneling%20with%20OVN(4).pdf)
+- [How to create an Open Virtual Network distributed gateway router](https://developers.redhat.com/blog/2018/11/08/how-to-create-an-open-virtual-network-distributed-gateway-router)
+- [OVN Interconnection](https://docs.ovn.org/en/latest/tutorials/ovn-interconnection.html)
+- [Hands-on with OVN Interconnection (OVN IC)](https://andreaskaris.github.io/blog/networking/ovn-interconnection/)
+- [Using OVN Interconnect for scaling OVN Kubernetes deployments](https://www.openvswitch.org/support/ovscon2022/slides/OVN-IC-OVSCON.pdf)
+- [OVN-Kubernetes](https://github.com/ovn-org/ovn-kubernetes)
