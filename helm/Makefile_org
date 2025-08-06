@@ -1,0 +1,124 @@
+# Makefile for Helm chart deployment with Kind cluster
+KIND_CLUSTER_NAME := kind-cluster
+
+# Helm chart configuration
+HELM_CHART_NAME := sample
+HELM_RELEASE_NAME := sample-release
+HELM_CHART_PATH := ./sample
+HELM_NAMESPACE := default
+
+ENV ?= dev
+
+# Set the Helm chart path based on the environment
+ifeq ($(ENV),prod)
+	HELM_CHART_PATH := ./sample/prod
+else ifeq ($(ENV),dev)
+	HELM_CHART_PATH := ./sample/dev
+else
+	$(error Invalid environment specified. Use 'dev', 'staging', or 'prod'.)
+endif
+
+# OS detection
+UNAME_S := $(shell uname -s)
+ifeq ($(UNAME_S),Darwin)
+    OS := mac
+    INSTALL_CMD := brew install
+else ifeq ($(UNAME_S),Linux)
+    OS := linux
+    INSTALL_CMD := sudo apt-get install -y
+endif
+
+
+define check-dependencies
+    @echo "Checking dependencies for $(OS)..."
+    @if ! command -v kind > /dev/null; then \
+        echo "Installing kind..."; \
+        if [ "$(OS)" = "mac" ]; then \
+            brew install kind; \
+        else \
+            [ -f ./kind ] || curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64; \
+            chmod +x ./kind; \
+            sudo mv ./kind /usr/local/bin/; \
+        fi; \
+    fi
+endef
+
+
+
+
+define create-kind-cluster
+	rm -f kind-config.yaml
+	cat > kind-config.yaml << 'EOF'
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: $(KIND_CLUSTER_NAME)
+nodes:
+- role: control-plane
+- role: worker
+- role: worker
+EOF
+	kind create cluster --name $(KIND_CLUSTER_NAME) --config kind-config.yaml
+	rm -f kind-config.yaml
+endef
+
+define check-kind-running
+	@echo "Checking if Kind cluster $(KIND_CLUSTER_NAME) is running..."
+	@if ! kind get clusters | grep -q $(KIND_CLUSTER_NAME); then \
+		echo "Kind cluster $(KIND_CLUSTER_NAME) is not running. Creating it..."; \
+        $(call create-kind-cluster); \
+	fi
+endef
+
+define helm-install
+	@echo "Installing Helm chart $(HELM_CHART_NAME) in namespace $(HELM_NAMESPACE)..."
+	helm install $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) --namespace $(HELM_NAMESPACE) --create-namespace
+endef	
+
+define helm-upgrade
+	@echo "Upgrading Helm release $(HELM_RELEASE_NAME) in namespace $(HELM_NAMESPACE)..."
+	helm upgrade $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) --namespace $(HELM_NAMESPACE)
+endef	
+
+define helm-uninstall
+	@echo "Uninstalling Helm release $(HELM_RELEASE_NAME) from namespace $(HELM_NAMESPACE)..."
+	helm uninstall $(HELM_RELEASE_NAME) --namespace $(HELM_NAMESPACE)
+endef
+
+define helm-clean
+	@echo "Cleaning up Helm release $(HELM_RELEASE_NAME) and namespace $(HELM_NAMESPACE)..."
+	helm uninstall $(HELM_RELEASE_NAME) --namespace $(HELM_NAMESPACE) || true
+	kubectl delete namespace $(HELM_NAMESPACE) || true
+endef
+
+define helm-deploy
+	$(call check-kind-running)
+	$(call helm-install)
+endef
+
+define helm-upgrade
+	$(call check-kind-running)
+	$(call helm-upgrade)
+endef
+
+define helm-clean
+	$(call check-kind-running)
+	$(call helm-clean)
+endef
+
+
+.PHONY: deploy clean install upgrade
+
+install:
+	$(call check-kind-running)
+	$(call helm-deploy)
+
+upgrade:
+	$(call check-kind-running)
+	$(call helm-upgrade)	
+
+clean:
+	$(call check-kind-running)
+	$(call helm-clean)
+
+# deploy: install
+

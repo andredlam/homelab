@@ -1,0 +1,44 @@
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+
+grafana:
+  replicaCount: 2
+  image:
+    pullPolicy: IfNotPresent
+
+
+influxdb:
+  replicaCount: 1
+  image:
+    registry: docker.io
+    repository: bitnami/influxdb
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  persistence:
+    enabled: true
+    # Remove storageClass to use static provisioning
+    # storageClass: ""  # Empty or omitted for static provisioning
+    existingClaim: "influxdb-nfs-pvc"  # Reference to static PVC
+  # Authentication settings
+  auth:
+    enabled: true
+    adminUser: "admin"
+    adminPassword: "influxdb-admin-password"
+    database: "telegraf"
+  # Resource limits  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+nginx:
+  replicaCount: 1
+  image:
+    pullPolicy: IfNotPresent
