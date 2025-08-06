@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "test-pvc-claim"
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "{{ .Release.Name }}-nfs-client"
+  resources:
+    requests:
+      storage: 1Gi
+---

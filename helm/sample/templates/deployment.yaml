@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-nfs-server"
+  labels:
+    app: nfs-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nfs-server
+  template:
+    metadata:
+      labels:
+        app: nfs-server
+    spec:
+      containers:
+        - name: nfs-server
+          image: {{ index .Values "nfs-server" "image" "repository" }}
+
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - SYS_ADMIN
+                - SETFCAP
+          ports:
+            - name: nfs
+              containerPort: 2049
+            - name: mountd
+              containerPort: 20048
+            - name: rpcbind
+              containerPort: 111
+          volumeMounts:
+            - name: exports
+              mountPath: /exports
+      volumes:
+        - name: exports
+          persistentVolumeClaim:
+            claimName: "{{ .Release.Name }}-nfs-pvc"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-react"
+  labels:
+     app: "{{ .Release.Name }}-react"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: "{{ .Release.Name }}-react"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Release.Name }}-react"
+    spec:
+      containers:
+        - name:  "{{ .Release.Name }}-react"
+          image: bitnami/nginx
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+              protocol: TCP
+---

@@ -126,3 +126,15 @@ kubectl get nodes
 # Check node details
 kubectl describe nodes
 ```
+
+# To delete kind cluster
+```shell
+kind delete cluster --name kind-cluster
+```
+# To stop kind cluster
+```shell
+docker stop kind-cluster-control-plane
+docker stop kind-cluster-worker
+docker stop kind-cluster-worker2
+docker stop kind-cluster-worker3
+```
