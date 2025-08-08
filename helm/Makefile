@@ -1,10 +1,17 @@
 ENV ?= dev
 ENV_PATH := ./environments/$(ENV)
-VALUES_FILE ?= $(ENV_PATH)/values/values.yaml
+VALUES_DIR ?= $(ENV_PATH)/values
+TEMPLATE_DIR := $(ENV_PATH)/templates
+
 
 HELM_CHART_NAME := sample
 HELM_CHART_PATH := ./sample
 HELM_SUBCHART_PATH := $(HELM_CHART_PATH)/charts
+
+# External NFS server configuration
+NFS_IP := 10.0.0.137
+NFS_PATH := /export
+LOCAL_NFS_PATH := /nfs/export
 
 # Cluster settings
 ifeq ($(ENV),dev)
@@ -23,11 +30,6 @@ endif
 HELM_RELEASE_NAME := $(HELM_CHART_NAME)-$(ENV)
 HELM_NAMESPACE := $(HELM_CHART_NAME)-$(ENV)
 
-# External NFS server configuration
-NFS_IP := 10.0.0.100
-NFS_PATH := /export
-LOCAL_NFS_PATH := /nfs/export
-
 # Mount NFS server to local path
 ifeq ("$(wildcard $(LOCAL_NFS_PATH))", "")
 	$(shell sudo mkdir -p $(LOCAL_NFS_PATH))
@@ -43,7 +45,7 @@ IMAGE_FILES := $(wildcard $(IMAGE_DIR)/*.tar)
 
 .PHONY: untar-subcharts
 define untar-subcharts
-	@echo "Checking for subcharts in $(CHART_DIR)..."
+	@echo "Untarring subcharts in $(CHART_DIR)..."
 	@for chart in $(CHART_FILES); do \
 	    chart_name = $(shell basename $$chart .tgz); \
 		if [ -f $(HELM_SUBCHART_PATH)/$$chart_name ]; then \
@@ -54,6 +56,14 @@ define untar-subcharts
 		fi; \
 	done
 endef
+
+.PHONY: create-pv-pvc
+define create-pv-pvc
+	@echo "Creating PersistentVolume and PersistentVolumeClaim for NFS storage..."
+	kubectl --kubeconfig=$(KUBECONFIG) apply -f $(TEMPLATE_DIR)/pv.yaml
+	kubectl --kubeconfig=$(KUBECONFIG) apply -f $(TEMPLATE_DIR)/pvc.yaml
+endef
+
 
 define get-image-tag
 	@echo "Extracting image tag for image: $(1)..."
@@ -100,42 +110,32 @@ define load-images-from-tar
     fi
 endef
 
-# OS detection
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-	OS := mac
-	INSTALL_CMD := brew install
-else ifeq ($(UNAME_S),Linux)
-	OS := linux
-	INSTALL_CMD := sudo apt-get install -y
-endif
-
 .PHONY: create-kind-cluster
 define create-kind-cluster
-	kind create cluster --name $(KIND_CLUSTER_NAME) \
+	kind create cluster --name $(CLUSTER_NAME) \
 		--kubeconfig $(KUBECONFIG) \
 		--config kind-config.yaml
 endef
 
 .PHONY: check-kind-running
 define check-kind-running
-	@echo "Checking if Kind cluster $(KIND_CLUSTER_NAME) is running..."
-	@if ! kind get clusters | grep -q $(KIND_CLUSTER_NAME); then \
-		echo "Creating KinD cluster $(KIND_CLUSTER_NAME)..."; \
+	@echo "Checking if Kind cluster $(CLUSTER_NAME) is running..."
+	@if ! kind get clusters | grep -q $(CLUSTER_NAME); then \
+		echo "Creating KinD cluster $(CLUSTER_NAME)..."; \
 		$(call create-kind-cluster); \
 	else \
-		echo "Kind cluster $(KIND_CLUSTER_NAME) is already running."; \
+		echo "Kind cluster $(CLUSTER_NAME) is already running."; \
 	fi
 endef
 
 .PHONY: delete-kind-cluster
 define delete-kind-cluster
-	@echo "Deleting Kind cluster $(KIND_CLUSTER_NAME)..."
-	@if kind get clusters | grep -q "^$(KIND_CLUSTER_NAME)$$"; then \
-		kind delete cluster --name $(KIND_CLUSTER_NAME); \
+	@echo "Deleting Kind cluster $(CLUSTER_NAME)..."
+	@if kind get clusters | grep -q "^$(CLUSTER_NAME)$$"; then \
+		kind delete cluster --name $(CLUSTER_NAME); \
 		rm -f $(KUBECONFIG); \
 	else \
-		echo "Kind cluster $(KIND_CLUSTER_NAME) does not exist."; \
+		echo "Kind cluster $(CLUSTER_NAME) does not exist."; \
 	fi
 endef
 
@@ -150,80 +150,40 @@ define helm-uninstall
 endef
 
 
-
 # Main user-facing targets
-.PHONY: install-dev install-prod clean-dev clean-prod
+.PHONY: setup-dev setup-prod install-dev install-prod clean-dev clean-prod
+setup-dev:
+	@$(MAKE) setup ENV=dev
+
+setup-prod:
+	@$(MAKE) setup ENV=prod
+
 install-dev:
-    @$(MAKE) install ENV=dev
+	@$(MAKE) install ENV=dev
 
 install-prod:
-    @$(MAKE) install ENV=prod
+	@$(MAKE) install ENV=prod
 
 clean-dev:
-    @$(MAKE) clean ENV=dev
+	@$(MAKE) clean ENV=dev
 
 clean-prod:
-    @$(MAKE) clean ENV=prod
+	@$(MAKE) clean ENV=prod
 
-.PHONY: setup-cluster
-setup-cluster:
-	@echo ">>> Setting up cluster for $(ENV) environment..."
-    @if [ "$(ENV)" = "dev" ]; then \
-        $(call check-kind-running); \
-        $(call load-images-from-tar); \
-    else \
-        echo "Checking access to production cluster..."; \
-        kubectl --kubeconfig=$(KUBECONFIG) get nodes || \
-        (echo "ERROR: Cannot access production cluster. Check KUBECONFIG." && exit 1); \
-    fi
-
-.PHONY: install
-install: setup-cluster
-	@echo ">>> Deploying Helm chart $(HELM_CHART_NAME) for $(ENV) environment..."
+.PHONY: setup
+setup:
+	@echo ">>> Initializing $(ENV) environment..."
 	$(call untar-subcharts)
+	$(call check-kind-running)
+	$(call load-images-from-tar)
+	$(call create-pv-pvc)
 
-	tag = $(shell $(call get-image-tag,frontend))
-	@echo "Using image tag: $(tag)"
-
-	helm dep update $(HELM_CHART_PATH)
-	helm install $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) \
-		--namespace $(HELM_NAMESPACE) \
-		--create-namespace \
-		--kubeconfig $(KUBECONFIG) \
-		-f $(VALUES_FILE) \
-		--set nfs-subdir-external-provisioner.nfs.server=$(NFS_IP) \
-		--set nfs-subdir-external-provisioner.nfs.path=$(NFS_PATH); \
 
 .PHONY: uninstall
-clean:
+uninstall:
 	$(call helm-uninstall)
 
 .PHONY: clean
 clean:
 	$(call helm-uninstall)
 	$(call delete-kind-cluster)
-
-.PHONY: upgrade
-upgrade:
-    @echo ">>> Upgrading $(ENV) environment..."
-    @if [ "$(ENV)" = "dev" ]; then \
-        $(call check-kind-running); \
-    fi
-    helm upgrade $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) \
-        --namespace $(HELM_NAMESPACE) \
-        --kubeconfig $(KUBECONFIG) \
-        -f $(VALUES_FILE)
-
-
-# # Development workflow
-# make install-dev     # Creates KinD, loads images, deploys
-# make clean-dev       # Uninstalls from KinD
-# make cleanall-dev    # Uninstalls and deletes KinD cluster
-
-# # Production workflow  
-# make install-prod    # Deploys to production cluster
-# make clean-prod      # Uninstalls from production
-
-# # Check what's running
-# kubectl --kubeconfig .kubeconfig-dev get pods     # Dev
-# kubectl --kubeconfig ~/.kube/prod-config get pods # Prod

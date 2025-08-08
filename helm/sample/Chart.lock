@@ -1,15 +1,15 @@
 dependencies:
 - name: grafana
   repository: https://grafana.github.io/helm-charts
-  version: 9.2.10
+  version: 9.3.0
 - name: influxdb
   repository: https://charts.bitnami.com/bitnami
   version: 7.1.10
 - name: nginx
   repository: https://charts.bitnami.com/bitnami/
   version: 21.0.8
-- name: nfs-subdir-external-provisioner
-  repository: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
-  version: 4.0.18
-digest: sha256:bf9035d321e7fae5a4354f34e18a1d352a86068cb10d639d9e12fc6c05063026
-generated: "2025-07-24T05:44:43.907911-07:00"
+- name: ingress-nginx
+  repository: https://kubernetes.github.io/ingress-nginx
+  version: 4.13.0
+digest: sha256:1f2e6efa25cdf85c3dae7af52eb84032a5ed3ff72ddf40ba073dc9a558a2e76a
+generated: "2025-08-08T04:14:10.960017497Z"

@@ -138,3 +138,9 @@ docker stop kind-cluster-worker
 docker stop kind-cluster-worker2
 docker stop kind-cluster-worker3
 ```
+
+# Install NFS client 
+```shell
+sudo apt update
+sudo apt install -y nfs-common
+```

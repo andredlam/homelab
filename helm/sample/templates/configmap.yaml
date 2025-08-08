@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ .Release.Name }}-configmap"
+data:
+  INFLUXDB_URL: "{{ .Values.influxdb.url }}"
+  INFLUXDB_DATABASE: "{{ .Values.influxdb.database }}"
+  INFLUXDB_USER: "{{ .Values.influxdb.user }}"
+  INFLUXDB_PASSWORD: "{{ .Values.influxdb.password }}"
+  INFLUXDB_ORG: "{{ .Values.influxdb.org }}"
+  INFLUXDB_BUCKET: "{{ .Values.influxdb.bucket }}"
+  GRAFANA_URL: "{{ .Values.grafana.url }}"
+  GRAFANA_ADMIN_USER: "{{ .Values.grafana.adminUser }}"
+  GRAFANA_ADMIN_PASSWORD: "{{ .Values.grafana.adminPassword }}"
+  BACKEND_HOST: "{{ .Release.Name }}-django"
+  BACKEND_PORT: "8000"
+  FRONTEND_HOST: "{{ .Release.Name }}-react"
+  FRONTEND_PORT: "3000"
+---

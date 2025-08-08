@@ -8,37 +8,72 @@ ingress:
 grafana:
   replicaCount: 2
   image:
+    registry: docker.io
+    repository: grafana/grafana
+    tag: "12.1.0"
     pullPolicy: IfNotPresent
-
+  service:
+    enabled: false
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  datasources:
+    enabled: true
+    influxdb:
+      url: "http://influxdb:8086"
+      database: "telegraf"
+      user: "admin"
+      password: "influxdb-password"
 
 influxdb:
   replicaCount: 1
+  objectStorage: file
   image:
     registry: docker.io
     repository: bitnami/influxdb
-    tag: "latest"
+    tag: "3.2.1-debian-12-r0"
     pullPolicy: IfNotPresent
+  defaultInitContainers:
+    volumePermissions:
+      enabled: true
   persistence:
     enabled: true
-    # Remove storageClass to use static provisioning
-    # storageClass: ""  # Empty or omitted for static provisioning
-    existingClaim: "influxdb-nfs-pvc"  # Reference to static PVC
-  # Authentication settings
+    existingClaim: "influxdb-pvc"
+    mountPath: /export/influxdb    
+  nodeId: 0
+  bucket: "scale-sample"
+  database: "scale-sample"
+  createAdminTokenJob:
+    enabled: false
   auth:
-    enabled: true
+    enabled: false
     adminUser: "admin"
-    adminPassword: "influxdb-admin-password"
-    database: "telegraf"
+  token:
+  org: "Scale-Sample"
   # Resource limits  
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-    requests:
-      cpu: 500m
-      memory: 1Gi
+  service:
+    type: ClusterIP
+    ports:
+      http: 8086
+      https: 8088
+  serviceAccount:
+    create: true
+    name: ""
 
-nginx:
+frontend:
   replicaCount: 1
   image:
-    pullPolicy: IfNotPresent
+    repository: library/frontend
+    tag: ""
+    pullPolicy: Never
+
+backend:
+  replicaCount: 1
+  image:
+    repository: library/backend
+    tag: ""
+    pullPolicy: Never
+  persistence:
+    name: backend-storage
+    claimName: "csv-data-pvc"
+    mountPath: /export/csv_data

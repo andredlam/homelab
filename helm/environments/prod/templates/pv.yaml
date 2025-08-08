@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: csv-data-shared
+  labels:
+    type: "nfs"
+    application: "backend"
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs
+  nfs:
+    server: 10.0.0.137
+    path: /export/csv_data
+  persistentVolumeReclaimPolicy: Retain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: influxdb-shared
+  labels:
+    type: "nfs"
+    application: "influxdb"
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nfs
+  nfs:
+    server: 10.0.0.137
+    path: /export/influxdb
+  persistentVolumeReclaimPolicy: Retain
+---

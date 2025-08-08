@@ -1,124 +1,227 @@
-# Makefile for Helm chart deployment with Kind cluster
-KIND_CLUSTER_NAME := kind-cluster
-
-# Helm chart configuration
-HELM_CHART_NAME := sample
-HELM_RELEASE_NAME := sample-release
-HELM_CHART_PATH := ./sample
-HELM_NAMESPACE := default
-
 ENV ?= dev
+ENV_PATH := ./environments/$(ENV)
+VALUES_FILE ?= $(ENV_PATH)/values/values.yaml
 
-# Set the Helm chart path based on the environment
-ifeq ($(ENV),prod)
-	HELM_CHART_PATH := ./sample/prod
-else ifeq ($(ENV),dev)
-	HELM_CHART_PATH := ./sample/dev
+HELM_CHART_NAME := sample
+HELM_CHART_PATH := ./sample
+HELM_SUBCHART_PATH := $(HELM_CHART_PATH)/charts
+
+# External NFS server configuration
+NFS_IP := 10.0.0.137
+NFS_PATH := /export
+LOCAL_NFS_PATH := /nfs/export
+
+# Cluster settings
+ifeq ($(ENV),dev)
+    CLUSTER_TYPE := kind
+    CLUSTER_NAME := kind-cluster
+    KUBECONFIG := $(HOME)/.kube/kind-config
+else ifeq ($(ENV),prod)
+    CLUSTER_TYPE := prod
+    CLUSTER_NAME := prod-cluster
+    KUBECONFIG := $(HOME)/.kube/prod-config
 else
-	$(error Invalid environment specified. Use 'dev', 'staging', or 'prod'.)
+    $(error "Invalid ENV specified. Must be 'dev' or 'prod'")
 endif
 
-# OS detection
-UNAME_S := $(shell uname -s)
-ifeq ($(UNAME_S),Darwin)
-    OS := mac
-    INSTALL_CMD := brew install
-else ifeq ($(UNAME_S),Linux)
-    OS := linux
-    INSTALL_CMD := sudo apt-get install -y
+# Helm settings for each environment
+HELM_RELEASE_NAME := $(HELM_CHART_NAME)-$(ENV)
+HELM_NAMESPACE := $(HELM_CHART_NAME)-$(ENV)
+
+# Mount NFS server to local path
+ifeq ("$(wildcard $(LOCAL_NFS_PATH))", "")
+	$(shell sudo mkdir -p $(LOCAL_NFS_PATH))
+	$(shell sudo mount -t nfs $(NFS_IP):$(NFS_PATH) $(LOCAL_NFS_PATH))
 endif
 
+# Both dev and prod use the same NFS path
+CHART_DIR := $(LOCAL_NFS_PATH)/charts
+CHART_FILES := $(wildcard $(CHART_DIR)/*.tgz)
+IMAGE_DIR := $(LOCAL_NFS_PATH)/images
+IMAGE_FILES := $(wildcard $(IMAGE_DIR)/*.tar)
 
-define check-dependencies
-    @echo "Checking dependencies for $(OS)..."
-    @if ! command -v kind > /dev/null; then \
-        echo "Installing kind..."; \
-        if [ "$(OS)" = "mac" ]; then \
-            brew install kind; \
-        else \
-            [ -f ./kind ] || curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64; \
-            chmod +x ./kind; \
-            sudo mv ./kind /usr/local/bin/; \
-        fi; \
-    fi
+
+.PHONY: untar-subcharts
+define untar-subcharts
+	@echo "Untarring subcharts in $(CHART_DIR)..."
+	@for chart in $(CHART_FILES); do \
+	    chart_name = $(shell basename $$chart .tgz); \
+		if [ -f $(HELM_SUBCHART_PATH)/$$chart_name ]; then \
+			echo "Subchart $$chart_name already exists, skipping untar..."; \
+		else \
+			echo "Untarring $$chart..."; \
+			tar -xzf $$chart -C $(HELM_SUBCHART_PATH); \
+		fi; \
+	done
+endef
+
+.PHONY: create-pv-pvc
+define create-pv-pvc
+	@echo "Creating PersistentVolume and PersistentVolumeClaim for NFS storage..."
+	kubectl --kubeconfig=$(KUBECONFIG) apply -f $(ENV_PATH)/k8s/nfs-pv-pvc.yaml
 endef
 
 
-
-
-define create-kind-cluster
-	rm -f kind-config.yaml
-	cat > kind-config.yaml << 'EOF'
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-name: $(KIND_CLUSTER_NAME)
-nodes:
-- role: control-plane
-- role: worker
-- role: worker
-EOF
-	kind create cluster --name $(KIND_CLUSTER_NAME) --config kind-config.yaml
-	rm -f kind-config.yaml
-endef
-
-define check-kind-running
-	@echo "Checking if Kind cluster $(KIND_CLUSTER_NAME) is running..."
-	@if ! kind get clusters | grep -q $(KIND_CLUSTER_NAME); then \
-		echo "Kind cluster $(KIND_CLUSTER_NAME) is not running. Creating it..."; \
-        $(call create-kind-cluster); \
+define get-image-tag
+	@echo "Extracting image tag for image: $(1)..."
+	$(eval TAG := $(shell docker exec -t $(CLUSTER_NAME)-control-plane crictl images | grep $(1) | awk '{print $$2}'))
+	@if [ -z "$(TAG)" ]; then \
+		echo "Error: Image $(1) not found in cluster $(CLUSTER_NAME)."; \
+		exit 1; \
+	else \
+		echo "Image tag for $(1) is: $(TAG)"; \
+		echo $(TAG); \
 	fi
 endef
 
-define helm-install
-	@echo "Installing Helm chart $(HELM_CHART_NAME) in namespace $(HELM_NAMESPACE)..."
-	helm install $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) --namespace $(HELM_NAMESPACE) --create-namespace
-endef	
 
-define helm-upgrade
-	@echo "Upgrading Helm release $(HELM_RELEASE_NAME) in namespace $(HELM_NAMESPACE)..."
-	helm upgrade $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) --namespace $(HELM_NAMESPACE)
-endef	
+define get-image-tags
+	@echo "Getting image tags for frontend and backend..."
+	$(eval FRONTEND_TAG := $(shell docker exec -t $(CLUSTER_NAME)-control-plane crictl images | grep frontend | awk '{print $$2}'))
+	$(eval BACKEND_TAG := $(shell docker exec -t $(CLUSTER_NAME)-control-plane crictl images | grep backend | awk '{print $$2}'))
+	@if [ -z "$(FRONTEND_TAG)" ] || [ -z "$(BACKEND_TAG)" ]; then \
+		sleep 5; \
+		$(eval FRONTEND_TAG := $(shell docker exec -t $(CLUSTER_NAME)-control-plane crictl images | grep frontend | awk '{print $$2}')) \
+		$(eval BACKEND_TAG := $(shell docker exec -t $(CLUSTER_NAME)-control-plane crictl images | grep backend | awk '{print $$2}')) \
+	fi
+endef
 
+
+# Update your load-images-from-tar function
+.PHONY: load-images-from-tar
+define load-images-from-tar
+    @if [ -n "$(IMAGE_FILES)" ]; then \
+        echo "Loading images from tar files..."; \
+        for image_tar in $(IMAGE_FILES); do \
+            image_name=$$(basename $$image_tar .tar); \
+            echo "Processing $$image_name from $$image_tar..."; \
+            if docker exec -t $(CLUSTER_NAME)-control-plane crictl images | grep $$image_name; then \
+                echo "✓ Image $$image_name already loaded, skipping..."; \
+            else \
+                echo "→ Loading $$image_name into cluster..."; \
+                kind load image-archive --name $(CLUSTER_NAME) $$image_tar; \
+            fi; \
+        done; \
+    else \
+        echo "No image tar files found in $(IMAGE_DIR). Skipping image load."; \
+    fi
+endef
+
+.PHONY: create-kind-cluster
+define create-kind-cluster
+	kind create cluster --name $(CLUSTER_NAME) \
+		--kubeconfig $(KUBECONFIG) \
+		--config kind-config.yaml
+endef
+
+.PHONY: check-kind-running
+define check-kind-running
+	@echo "Checking if Kind cluster $(CLUSTER_NAME) is running..."
+	@if ! kind get clusters | grep -q $(CLUSTER_NAME); then \
+		echo "Creating KinD cluster $(CLUSTER_NAME)..."; \
+		$(call create-kind-cluster); \
+	else \
+		echo "Kind cluster $(CLUSTER_NAME) is already running."; \
+	fi
+endef
+
+.PHONY: delete-kind-cluster
+define delete-kind-cluster
+	@echo "Deleting Kind cluster $(CLUSTER_NAME)..."
+	@if kind get clusters | grep -q "^$(CLUSTER_NAME)$$"; then \
+		kind delete cluster --name $(CLUSTER_NAME); \
+		rm -f $(KUBECONFIG); \
+	else \
+		echo "Kind cluster $(CLUSTER_NAME) does not exist."; \
+	fi
+endef
+
+.PHONY: helm-uninstall
 define helm-uninstall
-	@echo "Uninstalling Helm release $(HELM_RELEASE_NAME) from namespace $(HELM_NAMESPACE)..."
-	helm uninstall $(HELM_RELEASE_NAME) --namespace $(HELM_NAMESPACE)
-endef
-
-define helm-clean
-	@echo "Cleaning up Helm release $(HELM_RELEASE_NAME) and namespace $(HELM_NAMESPACE)..."
-	helm uninstall $(HELM_RELEASE_NAME) --namespace $(HELM_NAMESPACE) || true
-	kubectl delete namespace $(HELM_NAMESPACE) || true
-endef
-
-define helm-deploy
-	$(call check-kind-running)
-	$(call helm-install)
-endef
-
-define helm-upgrade
-	$(call check-kind-running)
-	$(call helm-upgrade)
-endef
-
-define helm-clean
-	$(call check-kind-running)
-	$(call helm-clean)
+	@echo "Cleaning up Helm release $(HELM_RELEASE_NAME) in namespace $(HELM_NAMESPACE)..."
+	helm uninstall $(HELM_RELEASE_NAME) \
+	    --namespace $(HELM_NAMESPACE) \
+		--kubeconfig $(KUBECONFIG) || true
+	kubectl delete namespace $(HELM_NAMESPACE) \
+	 	--kubeconfig $(KUBECONFIG) || true
 endef
 
 
-.PHONY: deploy clean install upgrade
 
+# Main user-facing targets
+.PHONY: setup-dev setup-prod install-dev install-prod clean-dev clean-prod
+setup-dev:
+	@$(MAKE) setup ENV=dev
+
+setup-prod:
+	@$(MAKE) setup ENV=prod
+
+install-dev:
+	@$(MAKE) install ENV=dev
+
+install-prod:
+	@$(MAKE) install ENV=prod
+
+clean-dev:
+	@$(MAKE) clean ENV=dev
+
+clean-prod:
+	@$(MAKE) clean ENV=prod
+
+.PHONY: setup
+setup:
+	@echo ">>> Initializing $(ENV) environment..."
+	$(call untar-subcharts); \
+	$(call check-kind-running); \
+	$(call load-images-from-tar); \
+	$(call create-pv-pvc); \
+
+
+.PHONY: install
 install:
-	$(call check-kind-running)
-	$(call helm-deploy)
+	@echo ">>> Deploying Helm chart $(HELM_CHART_NAME) for $(ENV) environment..."
+	$(call untar-subcharts)
 
-upgrade:
-	$(call check-kind-running)
-	$(call helm-upgrade)	
+	$(eval tag := $(shell $(call get-image-tag,frontend)))
+	@echo "Using image tag: $(tag)"
 
+	helm dep update $(HELM_CHART_PATH)
+	helm install $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) \
+		--namespace $(HELM_NAMESPACE) \
+		--create-namespace \
+		--kubeconfig $(KUBECONFIG) \
+		-f $(VALUES_FILE) \
+
+.PHONY: uninstall
+uninstall:
+	$(call helm-uninstall)
+
+.PHONY: clean
 clean:
-	$(call check-kind-running)
-	$(call helm-clean)
+	$(call helm-uninstall)
+	$(call delete-kind-cluster)
 
-# deploy: install
+.PHONY: upgrade
+upgrade:
+	@echo ">>> Upgrading $(ENV) environment..."
+	@if [ "$(ENV)" = "dev" ]; then \
+		$(call check-kind-running); \
+	fi
+	helm upgrade $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) \
+		--namespace $(HELM_NAMESPACE) \
+		--kubeconfig $(KUBECONFIG) \
+		-f $(VALUES_FILE)
 
+
+# # Development workflow
+# make install-dev     # Creates KinD, loads images, deploys
+# make clean-dev       # Uninstalls from KinD
+# make cleanall-dev    # Uninstalls and deletes KinD cluster
+
+# # Production workflow  
+# make install-prod    # Deploys to production cluster
+# make clean-prod      # Uninstalls from production
+
+# # Check what's running
+# kubectl --kubeconfig .kubeconfig-dev get pods     # Dev
+# kubectl --kubeconfig ~/.kube/prod-config get pods # Prod

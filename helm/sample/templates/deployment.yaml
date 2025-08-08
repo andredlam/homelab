@@ -1,53 +1,12 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: "{{ .Release.Name }}-nfs-server"
-  labels:
-    app: nfs-server
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: nfs-server
-  template:
-    metadata:
-      labels:
-        app: nfs-server
-    spec:
-      containers:
-        - name: nfs-server
-          image: {{ index .Values "nfs-server" "image" "repository" }}
-
-          securityContext:
-            privileged: true
-            capabilities:
-              add:
-                - SYS_ADMIN
-                - SETFCAP
-          ports:
-            - name: nfs
-              containerPort: 2049
-            - name: mountd
-              containerPort: 20048
-            - name: rpcbind
-              containerPort: 111
-          volumeMounts:
-            - name: exports
-              mountPath: /exports
-      volumes:
-        - name: exports
-          persistentVolumeClaim:
-            claimName: "{{ .Release.Name }}-nfs-pvc"
-
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: "{{ .Release.Name }}-react"
   labels:
-     app: "{{ .Release.Name }}-react"
+     {{ - include "sample.labels" . | nindent 4 }}
 spec:
-  replicas: 3
+  replicas: {{ .Values}}
   selector:
     matchLabels:
       app: "{{ .Release.Name }}-react"
@@ -56,12 +15,67 @@ spec:
       labels:
         app: "{{ .Release.Name }}-react"
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: "{{ .Release.Name }}-react"
+              topologyKey: "kubernetes.io/hostname"
       containers:
         - name:  "{{ .Release.Name }}-react"
-          image: bitnami/nginx
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 3000
               protocol: TCP
+          env:
+            - name: BD_HOST
+              value: " {{ .Release.Name }}-backend-service"
+            - name: BD_PORT
+              value: "8000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "{{ .Release.Name }}-django"
+  labels:
+     {{- include "sample.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      app: "{{ .Release.Name }}-django"
+  template:
+    metadata:
+      labels:
+        app: "{{ .Release.Name }}-django"
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  app: "{{ .Release.Name }}-django"
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+        - name:  "{{ .Release.Name }}-django"
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: "{{ .Release.Name }}-configmap"
+          volumeMounts:
+            - name: "{{ .Values.backend.persistence.name}}"
+              persistenceVolumeClaim:
+                claimName: "{{ .Values.backend.persistence.claimName }}"
+      volumes:
+        - name: "{{ .Values.backend.persistence.name}}"
+          persistentVolumeClaim:
+            claimName: "{{ .Values.backend.persistence.claimName }}"
 ---
