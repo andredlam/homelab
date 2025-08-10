@@ -3,6 +3,25 @@ ENV_PATH := ./environments/$(ENV)
 VALUES_DIR ?= $(ENV_PATH)/values
 TEMPLATE_DIR := $(ENV_PATH)/templates
 
+export ENV 	# Export ENV for use in shell commands
+export HOME	# Export HOME for use in shell commands
+
+
+# ---------------------------------------------------------------------------
+# Add this to the .bashrc so it will add kubeconfig automatically to kubectl
+# ---------------------------------------------------------------------------
+# export ENV=${ENV:-dev}
+# function kubectl() {
+#   if [[ "$ENV" == "dev" ]]; then
+#     command kubectl --kubeconfig="$HOME/.kube/kind-config" "$@"
+#   elif [[ "$ENV" == "prod" ]]; then
+#     command kubectl --kubeconfig="$HOME/.kube/prod-config" "$@"
+#   else
+#     command kubectl "$@"
+#   fi
+# }
+# ---------------------------------------------------------------------------
+
 
 HELM_CHART_NAME := sample
 HELM_CHART_PATH := ./sample
@@ -170,6 +189,7 @@ clean-dev:
 clean-prod:
 	@$(MAKE) clean ENV=prod
 
+# PV-PVC must be deployed for for influxdb to work
 .PHONY: setup
 setup:
 	@echo ">>> Initializing $(ENV) environment..."
@@ -178,10 +198,25 @@ setup:
 	$(call load-images-from-tar)
 	$(call create-pv-pvc)
 
+.PHONY: install
+install:
+	$(eval fe_tag := $(shell $(call get-image-tag,frontend)))
+	@echo "Using frontend image tag: $(fe_tag)"
+
+	$(eval be_tag := $(shell $(call get-image-tag,backend)))
+	@echo "Using backend image tag: $(be_tag)"
+
+# 	helm dep update $(HELM_CHART_PATH)
+# 	helm install $(HELM_RELEASE_NAME) $(HELM_CHART_PATH) \
+# 		--namespace $(HELM_NAMESPACE) \
+# 		--create-namespace \
+# 		--kubeconfig $(KUBECONFIG) \
+# 		-f $(VALUES_FILE) \
 
 .PHONY: uninstall
 uninstall:
 	$(call helm-uninstall)
+
 
 .PHONY: clean
 clean:

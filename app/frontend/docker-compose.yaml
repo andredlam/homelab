@@ -1,0 +1,54 @@
+services:
+  frontend:
+    image: simple-frontend:0.1.0
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://backend:8000
+    depends_on:
+      - backend
+      - influxdb
+    networks:
+      - app-network
+  
+  backend:
+    build:
+      context: ./backend
+    image: simple-backend:0.1.0
+    container_name: simple-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - /nfs/export/csv_data:/export/csv_data
+    environment:
+      - ENV=dev
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_DATABASE=telegraf
+      - INFLUXDB_USER=admin
+      - INFLUXDB_PASSWORD=influxdb-password
+    depends_on:
+      - influxdb
+    networks:
+      - app-network
+
+  influxdb:
+    image: bitnami/influxdb:3.2.1-debian-12-r0
+    container_name: influxdb
+    ports:
+      - "8086:8086"
+    volumes:
+      - /nfs/export/influxdb:/var/lib/influxdb
+    environment:
+      - INFLUXDB_DB=telegraf
+      - INFLUXDB_ADMIN_USER=admin
+      - INFLUXDB_ADMIN_PASSWORD=influxdb-password
+    networks:
+      - app-network
+      
+networks:
+  app-network:
+    driver: bridge
+
