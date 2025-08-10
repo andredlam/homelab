@@ -1,4 +1,4 @@
-#!/user/bin/env bash
+#!/usr/bin/env bash
 
 VERSION_FILE="VERSION.txt"
 BASE_IMAGE="bitnami/nginx:1.29.0"
@@ -53,5 +53,5 @@ echo "Building Docker image for $APP_NAME:$NEW_VERSION ..."
 docker build -t $APP_NAME:"$NEW_VERSION" -f Dockerfile .
 echo "Docker image $APP_NAME:$NEW_VERSION built successfully."
 
-# Update VERSION.txt with the new version
-echo "$NEW_VERSION" > "$VERSION_FILE"
+# Update docker-compose.yaml with the new version
+sed -i "s|image: $APP_NAME:.*|image: $APP_NAME:$NEW_VERSION|" docker-compose.yaml

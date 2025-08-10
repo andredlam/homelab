@@ -1,11 +1,10 @@
 services:
   frontend:
-    image: simple-frontend:0.1.0
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: simple-frontend:0.1.4
+    pull_policy: never
+    container_name: simple-frontend
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
       - REACT_APP_API_URL=http://backend:8000
     depends_on:
@@ -15,9 +14,8 @@ services:
       - app-network
   
   backend:
-    build:
-      context: ./backend
-    image: simple-backend:0.1.0
+    image: simple-backend:0.1.2
+    pull_policy: never
     container_name: simple-backend
     ports:
       - "8000:8000"
@@ -26,7 +24,9 @@ services:
     environment:
       - ENV=dev
       - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_DATABASE=telegraf
+      - INFLUXDB_TOKEN=my-super-secret-auth-token
+      - INFLUXDB_ORG=homelab
+      - INFLUXDB_BUCKET=telegraf
       - INFLUXDB_USER=admin
       - INFLUXDB_PASSWORD=influxdb-password
     depends_on:
@@ -35,16 +35,20 @@ services:
       - app-network
 
   influxdb:
-    image: bitnami/influxdb:3.2.1-debian-12-r0
+    image: influxdb:2.7
+    pull_policy: missing
     container_name: influxdb
     ports:
       - "8086:8086"
     volumes:
-      - /nfs/export/influxdb:/var/lib/influxdb
+      - /nfs/export/influxdb:/var/lib/influxdb2
     environment:
-      - INFLUXDB_DB=telegraf
-      - INFLUXDB_ADMIN_USER=admin
-      - INFLUXDB_ADMIN_PASSWORD=influxdb-password
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=influxdb-password
+      - DOCKER_INFLUXDB_INIT_ORG=homelab
+      - DOCKER_INFLUXDB_INIT_BUCKET=telegraf
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-auth-token
     networks:
       - app-network
       

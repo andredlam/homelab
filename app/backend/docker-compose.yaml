@@ -1,7 +1,7 @@
 services:
   backend:
     image: simple-backend:0.1.2
-    pull_policy: missing
+    pull_policy: never
     container_name: simple-backend
     ports:
       - "8000:8000"
