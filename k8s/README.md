@@ -219,10 +219,18 @@ sudo kubeadm init --config=/etc/kubernetes/kubeadm-config.yaml --upload-certs
 # You'll need both the master join command and worker join command
 
 #EXAMPLE OF JOIN COMMANDS:
-# kubeadm join k8s-master-1:6443 --token 5zzm2h.32q0hej0pi72d0oo \
-# 	--discovery-token-ca-cert-hash \ 
-#     sha256:368057dc67f5fdb8014df896fd7bc7b578bc477c89ae9bf6968c7887aa8da240
-# --control-plane --certificate-key 8d891ac63d512eb63ee82cdc2bd060d1aa06279c59a9e5d449ae705d3908b3f5
+kubeadm join k8s-master-1:6443 --token 5zzm2h.32q0hej0pi72d0oo --discovery-token-ca-cert-hash sha256:368057dc67f5fdb8014df896fd7bc7b578bc477c89ae9bf6968c7887aa8da240 --control-plane --certificate-key 8d891ac63d512eb63ee82cdc2bd060d1aa06279c59a9e5d449ae705d3908b3f5
+
+# For other masters
+  kubeadm join k8s-master-1:6443 --token 5zzm2h.32q0hej0pi72d0oo \
+	--discovery-token-ca-cert-hash sha256:368057dc67f5fdb8014df896fd7bc7b578bc477c89ae9bf6968c7887aa8da240 \
+	--control-plane --certificate-key 8d891ac63d512eb63ee82cdc2bd060d1aa06279c59a9e5d449ae705d3908b3f5
+
+# For worker nodes
+kubeadm join k8s-master-1:6443 --token 5zzm2h.32q0hej0pi72d0oo \
+	--discovery-token-ca-cert-hash sha256:368057dc67f5fdb8014df896fd7bc7b578bc477c89ae9bf6968c7887aa8da240
+
+
 ```
 
 ### 4.3 Configure kubectl for regular user

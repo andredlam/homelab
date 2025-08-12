@@ -1,0 +1,165 @@
+# Production Environment Configuration
+# Override default values for production deployment
+
+# Production ingress configuration
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: homelab.yourdomain.com  # Change to your production domain
+      paths:
+        - path: /api(/|$)(.*)
+          pathType: ImplementationSpecific
+          service: backend
+        - path: /(.*)
+          pathType: ImplementationSpecific
+          service: frontend
+  tls:
+    - secretName: homelab-tls  # TLS certificate secret
+      hosts:
+        - homelab.yourdomain.com
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"  # Force HTTPS in production
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"  # If using cert-manager
+
+# Production-grade replicas and resources
+frontend:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: your-registry.com/homelab/frontend  # Change to your registry
+    tag: "v1.0.0"  # Use specific version tags in production
+    pullPolicy: Always  # Always pull in production
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+backend:
+  replicaCount: 3
+  image:
+    repository: your-registry.com/homelab/backend  # Change to your registry
+    tag: "v1.0.0"  # Use specific version tags in production
+    pullPolicy: Always  # Always pull in production
+  persistence:
+    name: backend-storage
+    claimName: "csv-data-pvc"
+    mountPath: /export/csv_data
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  env:
+    # Production InfluxDB Connection Settings
+    INFLUXDB_URL: "http://sample-prod-influxdb2:8086"
+    INFLUXDB_TOKEN: "your-production-token"  # Use secure token
+    INFLUXDB_ORG: "YourOrg"
+    INFLUXDB_BUCKET: "production-data"
+    INFLUXDB_DATABASE: "production-data"
+    INFLUXDB_TIMEOUT: "30s"
+    INFLUXDB_VERIFY_SSL: "true"  # Enable SSL verification in production
+    LOG_LEVEL: "INFO"
+    PYTHONUNBUFFERED: "1"
+
+# Grafana production configuration
+grafana:
+  enabled: true
+  replicas: 2
+  image:
+    registry: docker.io
+    repository: grafana/grafana
+    tag: "12.1.0"
+    pullPolicy: Always  # Always pull in production
+  service:
+    enabled: true
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  # Production Grafana Environment Variables
+  env:
+    # Core Grafana Settings
+    GF_SECURITY_ADMIN_USER: "admin"
+    GF_SECURITY_ADMIN_PASSWORD: "your-secure-password"  # Change this!
+    GF_SECURITY_ALLOW_EMBEDDING: "false"  # More secure in production
+    # Server settings for production
+    GF_SERVER_DOMAIN: "homelab.yourdomain.com"
+    GF_SERVER_ROOT_URL: "https://homelab.yourdomain.com/grafana"
+    GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    # Security settings
+    GF_DATABASE_TYPE: "postgres"  # Consider external DB in production
+    GF_ANALYTICS_REPORTING_ENABLED: "false"
+    GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    GF_LOG_LEVEL: "warn"  # Less verbose in production
+
+# InfluxDB production configuration
+influxdb:
+  enabled: true
+  replicaCount: 1
+  objectStorage: file
+  image:
+    registry: docker.io
+    repository: influxdb
+    tag: "2.7.4"
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+  persistence:
+    name: influxdb-storage
+    enabled: true
+    size: 100Gi  # Larger storage for production
+  # Production InfluxDB initialization
+  auth:
+    admin:
+      username: "admin"
+      password: "your-secure-influxdb-password"  # Change this!
+      token: "your-production-token"  # Change this!
+      org: "YourOrg"
+      bucket: "production-data"
+
+# Ingress-nginx controller production settings
+ingress-nginx:
+  enabled: true
+  controller:
+    replicaCount: 2  # Multiple replicas for HA
+    service:
+      type: LoadBalancer  # Use LoadBalancer in production
+      annotations:
+        service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # If on AWS
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+      requests:
+        cpu: 500m
+        memory: 512Mi
+    config:
+      use-real-ip: "true"
+      real-ip-header: "X-Forwarded-For"
+      compute-full-forwarded-for: "true"
+
+# Production security settings
+networkPolicies:
+  enabled: true  # Enable network policies for security
+
+podSecurityPolicy:
+  enabled: true  # Enable pod security policies
