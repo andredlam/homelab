@@ -4,42 +4,114 @@ service:
 
 ingress:
   enabled: false
+  hosts:
+    - host: 127.0.0.1
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  annotations: {}
+
+frontend:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: library/simple-frontend
+    tag: ""
+    pullPolicy: Never
+
+backend:
+  replicaCount: 3
+  image:
+    repository: library/simple-backend
+    tag: ""
+    pullPolicy: Never
+  persistence:
+    name: backend-storage
+    claimName: "csv-data-pvc"
+    mountPath: /export/csv_data
+  env:
+    # InfluxDB Connection Settings
+    INFLUXDB_URL: "http://sample-dev-influxdb2:8086"
+    INFLUXDB_TOKEN: "dev-token-12345"
+    INFLUXDB_ORG: "Scale-Sample"
+    INFLUXDB_BUCKET: "scale-sample"
+    INFLUXDB_DATABASE: "scale-sample"
+    # Optional InfluxDB Settings
+    INFLUXDB_TIMEOUT: "30s"
+    INFLUXDB_VERIFY_SSL: "false"
+    # Application Settings
+    LOG_LEVEL: "INFO"
+    PYTHONUNBUFFERED: "1"
+
 
 grafana:
-  replicaCount: 2
+  enabled: true
+  replicas: 2
   image:
     registry: docker.io
     repository: grafana/grafana
     tag: "12.1.0"
-    pullPolicy: IfNotPresent
+    pullPolicy: Never
   service:
     enabled: false
     type: ClusterIP
     port: 3000
     targetPort: 3000
+  # Grafana Environment Variables
+  env:
+    # Core Grafana Settings
+    GF_SECURITY_ADMIN_USER: "admin"
+    GF_SECURITY_ADMIN_PASSWORD: "grafana123"
+    GF_SECURITY_ALLOW_EMBEDDING: "true"
+    # InfluxDB Connection Settings
+    GF_DATABASE_TYPE: "sqlite3"
+    GF_ANALYTICS_REPORTING_ENABLED: "false"
+    GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    # Logging
+    GF_LOG_LEVEL: "info"
+  # InfluxDB Datasource Configuration
   datasources:
-    enabled: true
     influxdb:
-      url: "http://influxdb:8086"
-      database: "telegraf"
+      name: "InfluxDB"
+      type: "influxdb"
+      access: "proxy"
+      url: "http://sample-dev-influxdb2:8086"
+      database: "scale-sample"
       user: "admin"
-      password: "influxdb-password"
+      password: "admin123"
+      basicAuth: false
+      basicAuthUser: ""
+      basicAuthPassword: ""
+      withCredentials: false
+      isDefault: true
+      version: 2
+      jsonData:
+        version: "Flux"
+        organization: "Scale-Sample"
+        defaultBucket: "scale-sample"
+        tlsSkipVerify: true
+        timeout: 30
+      secureJsonData:
+        token: "dev-token-12345"
 
 influxdb:
+  enabled: true
   replicaCount: 1
   objectStorage: file
   image:
     registry: docker.io
-    repository: bitnami/influxdb
-    tag: "3.2.1-debian-12-r0"
-    pullPolicy: IfNotPresent
+    repository: influxdb
+    tag: "2.7.4-alpine"
+    pullPolicy: Never
   defaultInitContainers:
     volumePermissions:
       enabled: true
   persistence:
+    name: influxdb-storage
     enabled: true
     existingClaim: "influxdb-pvc"
-    mountPath: /export/influxdb    
+    mountPath: /export/influxdb
   nodeId: 0
   bucket: "scale-sample"
   database: "scale-sample"
@@ -48,8 +120,29 @@ influxdb:
   auth:
     enabled: false
     adminUser: "admin"
-  token:
+    adminPassword: "admin123"  # Used in auto-generated secret
+  token: "dev-token-12345"      # Used in auto-generated secret
   org: "Scale-Sample"
+  # InfluxDB Environment Variables
+  env:
+    # Core InfluxDB Settings
+    DOCKER_INFLUXDB_INIT_MODE: "setup"
+    DOCKER_INFLUXDB_INIT_USERNAME: "admin"
+    DOCKER_INFLUXDB_INIT_PASSWORD: "admin123"
+    DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: "dev-token-12345"
+    DOCKER_INFLUXDB_INIT_ORG: "Scale-Sample"
+    DOCKER_INFLUXDB_INIT_BUCKET: "scale-sample"
+    # Storage and Performance
+    INFLUXD_BOLT_PATH: "/export/influxdb/influxd.bolt"
+    INFLUXD_ENGINE_PATH: "/export/influxdb/engine"
+    INFLUXD_STORAGE_WAL_FSYNC_DELAY: "0s"
+    # Network and API
+    INFLUXD_HTTP_BIND_ADDRESS: "0.0.0.0:8086"
+    INFLUXD_HTTP_READ_TIMEOUT: "0"
+    INFLUXD_HTTP_WRITE_TIMEOUT: "0"
+    # Logging
+    INFLUXD_LOG_LEVEL: "info"
+    INFLUXD_REPORTING_DISABLED: "true"
   # Resource limits  
   service:
     type: ClusterIP
@@ -60,20 +153,8 @@ influxdb:
     create: true
     name: ""
 
-frontend:
-  replicaCount: 1
-  image:
-    repository: library/frontend
-    tag: ""
-    pullPolicy: Never
+# Note: InfluxDB credentials are automatically created as a Kubernetes secret
+# The secret name will be: {{ release-name }}-influxdb-secret
+# This secret contains: token, password, username, org, and bucket values
 
-backend:
-  replicaCount: 1
-  image:
-    repository: library/backend
-    tag: ""
-    pullPolicy: Never
-  persistence:
-    name: backend-storage
-    claimName: "csv-data-pvc"
-    mountPath: /export/csv_data
+

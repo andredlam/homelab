@@ -2,14 +2,14 @@ dependencies:
 - name: grafana
   repository: https://grafana.github.io/helm-charts
   version: 9.3.0
-- name: influxdb
-  repository: https://charts.bitnami.com/bitnami
-  version: 7.1.10
+- name: influxdb2
+  repository: https://helm.influxdata.com/
+  version: 2.1.2
 - name: nginx
   repository: https://charts.bitnami.com/bitnami/
   version: 21.0.8
 - name: ingress-nginx
   repository: https://kubernetes.github.io/ingress-nginx
   version: 4.13.0
-digest: sha256:1f2e6efa25cdf85c3dae7af52eb84032a5ed3ff72ddf40ba073dc9a558a2e76a
-generated: "2025-08-08T04:14:10.960017497Z"
+digest: sha256:651d56a30bbecbc98020e0494cf2648ddcd657e41cf1a09729e9fc929c846c5d
+generated: "2025-08-11T23:41:34.570840995Z"

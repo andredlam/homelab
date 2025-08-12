@@ -2,7 +2,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import os
-from datetime import datetime
+from datetime import 
+from influxdb_client import InfluxDBClient
+
+# InfluxDB connection
+influx_url = os.getenv('INFLUXDB_URL', 'http://localhost:8086')
+influx_token = os.getenv('INFLUXDB_TOKEN', '')
+influx_org = os.getenv('INFLUXDB_ORG', 'Scale-Sample')
+influx_bucket = os.getenv('INFLUXDB_BUCKET', 'scale-sample')
 
 app = FastAPI(
     title="Simple Backend API",

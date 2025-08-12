@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: csv-data-pvc
+  name: "csv-data-pvc"
   labels:
     type: "nfs"
     application: "backend"
@@ -12,11 +12,12 @@ spec:
     requests:
       storage: 1Gi
   volumeName: csv-data-shared
+  storageClassName: nfs
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: influxdb-pvc
+  name: "influxdb-pvc"
   labels:
     type: "nfs"
     application: "influxdb"
@@ -27,4 +28,5 @@ spec:
     requests:
       storage: 1Gi
   volumeName: influxdb-shared
+  storageClassName: nfs
 ---

@@ -1,6 +1,6 @@
 apiVersion: v2
-name: monitoring-stack
-description: A Helm chart for Grafana and InfluxDB monitoring stack
+name: sample
+description: A Helm chart for testing deployments
 type: application
 version: 0.1.0
 appVersion: "1.0.0"
@@ -12,9 +12,9 @@ dependencies:
     repository: "https://grafana.github.io/helm-charts"
     # helm repo add grafana https://grafana.github.io/helm-charts
 
-  - name: influxdb
-    version: "7.1.10"
-    repository: "https://charts.bitnami.com/bitnami"
+  - name: influxdb2
+    version: "2.1.2"
+    repository: "https://helm.influxdata.com/"
     # helm repo add influxdata https://helm.influxdata.com/
   
   - name: nginx

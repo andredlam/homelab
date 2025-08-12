@@ -4,9 +4,9 @@ kind: Deployment
 metadata:
   name: "{{ .Release.Name }}-react"
   labels:
-     {{ - include "sample.labels" . | nindent 4 }}
+    {{- include "sample.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values}}
+  replicas: {{ .Values.frontend.replicaCount }}
   selector:
     matchLabels:
       app: "{{ .Release.Name }}-react"
@@ -15,13 +15,13 @@ spec:
       labels:
         app: "{{ .Release.Name }}-react"
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: "{{ .Release.Name }}-react"
-              topologyKey: "kubernetes.io/hostname"
+      # affinity:
+      #   podAntiAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       - labelSelector:
+      #           matchLabels:
+      #             app: "{{ .Release.Name }}-react"
+      #         topologyKey: "kubernetes.io/hostname"
       containers:
         - name:  "{{ .Release.Name }}-react"
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
@@ -52,13 +52,13 @@ spec:
       labels:
         app: "{{ .Release.Name }}-django"
     spec:
-      affinity:
-        nodeAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchLabels:
-                  app: "{{ .Release.Name }}-django"
-              topologyKey: "kubernetes.io/hostname"
+      # affinity:
+      #   podAntiAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       - labelSelector:
+      #           matchLabels:
+      #             app: "{{ .Release.Name }}-django"
+      #         topologyKey: "kubernetes.io/hostname"
       containers:
         - name:  "{{ .Release.Name }}-django"
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
@@ -72,8 +72,26 @@ spec:
                 name: "{{ .Release.Name }}-configmap"
           volumeMounts:
             - name: "{{ .Values.backend.persistence.name}}"
-              persistenceVolumeClaim:
-                claimName: "{{ .Values.backend.persistence.claimName }}"
+              mountPath: "{{ .Values.backend.persistence.mountPath }}"
+          env:
+            - name: INFLUXDB_URL
+              value: "http://{{ .Release.Name }}-influxdb:8086"
+            - name: INFLUXDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Release.Name }}-influxdb-secret"
+                  key: influxdb-token
+            - name: INFLUXDB_ORG
+              value: "{{ .Values.influxdb.org }}"
+            - name: INFLUXDB_BUCKET
+              value: "{{ .Values.influxdb.bucket }}"
+            - name: INFLUXDB_USER
+              value: "{{ .Values.influxdb.auth.adminUser }}"
+            - name: INFLUXDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ .Release.Name }}-influxdb-secret"
+                  key: influxdb-password
       volumes:
         - name: "{{ .Values.backend.persistence.name}}"
           persistentVolumeClaim:
