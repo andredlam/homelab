@@ -171,7 +171,227 @@ The chart uses custom Docker images that are built from the `/app` directory:
 - Configure monitoring and alerting
 - Backup strategy for persistent data
 
-## 🔍 Troubleshooting
+## 🌐 How to Access Your Services
+
+The homelab deployment uses **ingress-nginx** to route traffic to your applications. All services are accessible through a single entry point.
+
+### 🔧 Service Routes
+
+| Service | URL Path | Destination | Port |
+|---------|----------|-------------|------|
+| **Frontend** | `http://homelab.local/` | React Application | 3000 |
+| **Backend API** | `http://homelab.local/api` | FastAPI Backend | 8000 |
+| **InfluxDB** | Port Forward Only | Time Series Database | 8086 |
+| **Grafana** | Port Forward Only | Monitoring Dashboard | 3000 |
+
+### 🏠 Method 1: Local Hostname (Recommended)
+
+1. **Add to your hosts file**:
+   ```bash
+   # Linux/Mac: /etc/hosts
+   # Windows: C:\Windows\System32\drivers\etc\hosts
+   127.0.0.1 homelab.local
+   ```
+
+2. **Access your services**:
+   ```bash
+   # Frontend (React App)
+   http://homelab.local:30080/
+   
+   # Backend API
+   http://homelab.local:30080/api
+   
+   # API Documentation (if available)
+   http://homelab.local:30080/api/docs
+   ```
+
+### 🔌 Method 2: Port Forwarding (Easy Testing)
+
+1. **Forward ingress controller**:
+   ```bash
+   kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-ingress-nginx-controller 8080:80
+   ```
+
+2. **Access your services**:
+   ```bash
+   # Frontend
+   http://localhost:8080/
+   
+   # Backend API  
+   http://localhost:8080/api
+   ```
+
+3. **Forward specific services directly**:
+   ```bash
+   # Frontend only
+   kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-frontend-service 3000:3000
+   
+   # Backend only
+   kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-backend-service 8000:8000
+   
+   # InfluxDB
+   kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-influxdb2 8086:80
+   
+   # Grafana (when available)
+   kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-grafana 3000:3000
+   ```
+
+### 🖥️ Method 3: Direct Node Access
+
+1. **Get Kind cluster node IP**:
+   ```bash
+   docker inspect kind-cluster-worker | grep IPAddress
+   ```
+
+2. **Access via NodePort**:
+   ```bash
+   # Replace <node-ip> with the actual IP address
+   http://<node-ip>:30080/     # Frontend
+   http://<node-ip>:30080/api  # Backend API
+   ```
+
+### 📊 Accessing Databases and Monitoring
+
+#### **InfluxDB Access**
+```bash
+# Method 1: Port Forward
+kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-influxdb2 8086:80
+
+# Then access: http://localhost:8086
+# Username: admin
+# Password: admin123
+# Token: dev-token-12345
+# Organization: Scale-Sample
+```
+
+#### **Grafana Access (Monitoring Dashboard)**
+```bash
+# Method 1: Port Forward (Recommended)
+kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-grafana 3000:3000
+
+# Then access: http://localhost:3000
+# Username: admin  
+# Password: grafana123
+# 
+# Pre-configured with InfluxDB datasource:
+# - Organization: Scale-Sample
+# - Database: scale-sample
+# - Token: dev-token-12345
+```
+
+**Note**: Grafana has a redirect loop issue when accessed via ingress subpath (`/grafana`). 
+Use port forwarding for direct access until this is resolved.
+
+### 🔧 Ingress Configuration Details
+
+The ingress controller is configured with:
+
+```yaml
+# NodePort Service Ports
+HTTP:  30080  # External access port
+HTTPS: 30443  # HTTPS (when TLS configured)
+
+# Internal Service Ports  
+Frontend: 3000
+Backend:  8000
+InfluxDB: 8086 (via port-forward)
+Grafana:  3000 (via port-forward)
+```
+
+### 🔒 HTTPS/TLS Configuration
+
+For production deployments, you can enable HTTPS:
+
+1. **Create TLS certificate**:
+   ```bash
+   kubectl create secret tls homelab-tls --cert=tls.crt --key=tls.key
+   ```
+
+2. **Update values.yaml**:
+   ```yaml
+   ingress:
+     tls:
+       - secretName: homelab-tls
+         hosts:
+           - homelab.local
+   ```
+
+3. **Access via HTTPS**:
+   ```bash
+   https://homelab.local:30443/
+   ```
+
+### ⚙️ Service Discovery
+
+All services communicate internally using Kubernetes DNS:
+
+```bash
+# Internal service addresses
+sample-dev-frontend-service.default.svc.cluster.local:3000
+sample-dev-backend-service.default.svc.cluster.local:8000  
+sample-dev-influxdb2.default.svc.cluster.local:80
+```
+
+This setup provides a complete development environment accessible through standard web URLs! 🚀
+
+## � Monitoring with Grafana
+
+### Accessing Grafana Dashboard
+
+Grafana provides monitoring and visualization capabilities for your homelab deployment:
+
+1. **Start port forwarding**:
+   ```bash
+   kubectl --kubeconfig ~/.kube/kind-config port-forward svc/sample-dev-grafana 3000:3000
+   ```
+
+2. **Open Grafana in browser**:
+   ```
+   http://localhost:3000
+   ```
+
+3. **Login credentials**:
+   ```
+   Username: admin
+   Password: grafana123
+   ```
+
+### Pre-configured Datasources
+
+Grafana comes pre-configured with InfluxDB integration:
+
+- **InfluxDB Datasource**: Automatically configured
+- **URL**: `http://sample-dev-influxdb2:8086`
+- **Organization**: Scale-Sample
+- **Database**: scale-sample
+- **Token**: dev-token-12345
+
+### Creating Your First Dashboard
+
+1. **Navigate to Dashboards** → **Create** → **New Dashboard**
+2. **Add a new panel**
+3. **Select InfluxDB as the datasource**
+4. **Use Flux query language** to query your data:
+   ```flux
+   from(bucket: "scale-sample")
+     |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+     |> filter(fn: (r) => r["_measurement"] == "your_measurement")
+   ```
+
+### Alternative Access Methods
+
+If port forwarding is not convenient:
+
+```bash
+# Method 2: NodePort exposure (requires service modification)
+kubectl --kubeconfig ~/.kube/kind-config patch svc sample-dev-grafana -p '{"spec":{"type":"NodePort","ports":[{"port":3000,"nodePort":30030}]}}'
+
+# Then access: http://homelab.local:30030
+```
+
+**Note**: The ingress route `/grafana` currently has redirect loop issues and is not recommended for access.
+
+## �🔍 Troubleshooting
 
 ### Common Issues
 

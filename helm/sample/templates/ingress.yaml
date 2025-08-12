@@ -35,9 +35,23 @@ spec:
             {{- end }}
             backend:
               service:
+                {{- if eq .service "frontend" }}
+                name: {{ include "sample.fullname" $ }}-frontend-service
+                port:
+                  number: 3000
+                {{- else if eq .service "backend" }}
+                name: {{ include "sample.fullname" $ }}-backend-service
+                port:
+                  number: 8000
+                {{- else if eq .service "grafana" }}
+                name: {{ include "sample.fullname" $ }}-grafana
+                port:
+                  number: 3000
+                {{- else }}
                 name: {{ include "sample.fullname" $ }}
                 port:
                   number: {{ $.Values.service.port }}
+                {{- end }}
           {{- end }}
     {{- end }}
 {{- end }}
